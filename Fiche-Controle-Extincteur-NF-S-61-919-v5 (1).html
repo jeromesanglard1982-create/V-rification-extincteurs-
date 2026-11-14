@@ -1,0 +1,2292 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Contrôle Extincteur — NF S 61-919</title>
+
+  <!-- Configuration Application Mobile (PWA / Écran d'accueil Android & iOS) -->
+  <meta name="application-name" content="Contrôle Extincteur">
+  <meta name="apple-mobile-web-app-title" content="Extincteurs">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#020617">
+  <meta name="format-detection" content="telephone=no">
+
+  <!-- Icône d'application intégrée (SVG haute définition) -->
+  <link id="app-icon-link" rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='112' fill='%23dc2626'/%3E%3Cg fill='none' stroke='%23ffffff' stroke-width='28' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M310 145V88a20 20 0 0 0-20-20h-44a20 20 0 0 0-20 20v57'/%3E%3Cpath d='M196 384h156'/%3E%3Cpath d='M374 88h-64'/%3E%3Cpath d='M234 88c-66 0-120 54-120 120v216'/%3E%3Cpath d='M196 216a78 78 0 0 1 156 0v192a20 20 0 0 1-20 20H216a20 20 0 0 1-20-20V216Z'/%3E%3C/g%3E%3C/svg%3E">
+  <link id="apple-touch-icon-link" rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='112' fill='%23dc2626'/%3E%3Cg fill='none' stroke='%23ffffff' stroke-width='28' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M310 145V88a20 20 0 0 0-20-20h-44a20 20 0 0 0-20 20v57'/%3E%3Cpath d='M196 384h156'/%3E%3Cpath d='M374 88h-64'/%3E%3Cpath d='M234 88c-66 0-120 54-120 120v216'/%3E%3Cpath d='M196 216a78 78 0 0 1 156 0v192a20 20 0 0 1-20 20H216a20 20 0 0 1-20-20V216Z'/%3E%3C/g%3E%3C/svg%3E">
+  <link id="manifest-link" rel="manifest">
+
+  <!-- Tailwind CSS pour le design adaptatif -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Bibliothèque jsPDF pour la génération directe du rapport PDF -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@600;700&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    * {
+      -webkit-tap-highlight-color: transparent;
+    }
+    html, body {
+      overscroll-behavior-y: contain;
+    }
+    body {
+      padding-top: env(safe-area-inset-top);
+      padding-bottom: calc(6rem + env(safe-area-inset-bottom));
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .animate-fade-in {
+      animation: fadeIn 0.2s ease-out forwards;
+    }
+  </style>
+</head>
+<body class="bg-slate-100 text-slate-900 font-sans antialiased select-none sm:select-auto">
+
+  <!-- Toast de notification non intrusif -->
+  <div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 pointer-events-none opacity-0 transition-all duration-300 transform translate-y-4">
+    <div class="bg-slate-900 text-white px-4 py-3 rounded-2xl shadow-2xl border border-slate-700 flex items-center gap-2.5 text-sm font-semibold max-w-[92vw]">
+      <span id="toast-icon" class="text-emerald-400 shrink-0">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+      </span>
+      <span id="toast-msg" class="truncate">Action effectuée</span>
+    </div>
+  </div>
+
+  <!-- Modale d'installation sur smartphone (Écran d'accueil) -->
+  <div id="install-modal" class="fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-slate-200 space-y-4">
+      <div class="flex items-center gap-3">
+        <div class="w-12 h-12 rounded-2xl bg-red-600 text-white flex items-center justify-center shadow-md shrink-0">
+          <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M15 6.5V3a1 1 0 0 0-1-1h-2a1 1 0 0 0-1 1v3.5"/>
+            <path d="M9 18h8"/>
+            <path d="M18 3h-3"/>
+            <path d="M11 3a6 6 0 0 0-6 6v11"/>
+            <path d="M9 10a4 4 0 0 1 8 0v10a1 1 0 0 1-1 1h-6a1 1 0 0 1-1-1V10Z"/>
+          </svg>
+        </div>
+        <div>
+          <h3 class="text-base font-extrabold text-slate-900">Installer comme application</h3>
+          <p class="text-xs text-slate-500">Accès direct depuis l'écran d'accueil</p>
+        </div>
+      </div>
+
+      <!-- Bouton natif si supporté par le navigateur -->
+      <button id="native-install-trigger-btn" type="button" class="hidden w-full py-3.5 px-4 rounded-2xl font-extrabold text-sm text-white bg-blue-900 hover:bg-blue-800 active:scale-95 transition flex items-center justify-center gap-2 shadow-md">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+        <span>Installer maintenant sur l'écran</span>
+      </button>
+
+      <!-- Instructions manuelles selon téléphone -->
+      <div class="space-y-2.5 text-xs text-slate-700 bg-slate-50 p-3.5 rounded-2xl border border-slate-200">
+        <div>
+          <p class="font-extrabold text-slate-900 mb-0.5">Sur Android (Chrome / Samsung Internet) :</p>
+          <p class="leading-relaxed">Appuyez sur le menu <strong>⋮</strong> (ou <strong>≡</strong> en bas) puis sélectionnez <strong>« Ajouter à l'écran d'accueil »</strong> ou <strong>« Installer l'application »</strong>.</p>
+        </div>
+        <div class="border-t border-slate-200 pt-2">
+          <p class="font-extrabold text-slate-900 mb-0.5">Sur iPhone (Safari) :</p>
+          <p class="leading-relaxed">Appuyez sur l'icône <strong>Partager</strong> (carré avec flèche vers le haut) puis sur <strong>« Sur l'écran d'accueil »</strong>.</p>
+        </div>
+      </div>
+
+      <button id="close-install-modal-btn" type="button" class="w-full py-3 px-4 rounded-xl font-bold text-sm text-slate-700 bg-slate-100 hover:bg-slate-200 active:scale-95 transition">
+        Fermer
+      </button>
+    </div>
+  </div>
+
+  <!-- Modale de confirmation pour nouvel extincteur (même client) -->
+  <div id="reset-modal" class="fixed inset-0 z-50 bg-slate-900/75 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-slate-200">
+      <div class="w-12 h-12 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center mb-4">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+      </div>
+      <h3 class="text-lg font-bold text-slate-900 mb-1">Enregistrer et passer au suivant ?</h3>
+      <p class="text-sm text-slate-600 mb-6">L'extincteur actuel sera <strong>ajouté au rapport global du client</strong>, puis le formulaire d'appareil sera réinitialisé pour le contrôle suivant.</p>
+      <div class="grid grid-cols-2 gap-3">
+        <button id="cancel-reset-btn" type="button" class="py-3 px-4 rounded-xl font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 active:scale-95 transition">
+          Annuler
+        </button>
+        <button id="confirm-reset-btn" type="button" class="py-3 px-4 rounded-xl font-bold text-white bg-blue-900 hover:bg-blue-800 active:scale-95 transition shadow-sm">
+          Enregistrer & Suivant
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modale de confirmation pour NOUVEAU CLIENT (efface la liste des extincteurs) -->
+  <div id="new-client-modal" class="fixed inset-0 z-50 bg-slate-900/75 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-slate-200">
+      <div class="w-12 h-12 rounded-full bg-red-100 text-red-700 flex items-center justify-center mb-4">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+      </div>
+      <h3 class="text-lg font-bold text-slate-900 mb-1">Démarrer un nouveau client ?</h3>
+      <p class="text-sm text-slate-600 mb-6">Cette action effacera les informations du client actuel ainsi que la liste de ses extincteurs enregistrés. Pensez à télécharger le PDF avant si nécessaire.</p>
+      <div class="grid grid-cols-2 gap-3">
+        <button id="cancel-new-client-btn" type="button" class="py-3 px-4 rounded-xl font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 active:scale-95 transition">
+          Annuler
+        </button>
+        <button id="confirm-new-client-btn" type="button" class="py-3 px-4 rounded-xl font-bold text-white bg-red-600 hover:bg-red-700 active:scale-95 transition shadow-sm">
+          Tout réinitialiser
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 1. EN-TÊTE STICKY : STATUT & PROGRESSION DU CONTRÔLE -->
+  <header class="bg-slate-950 text-white sticky top-0 z-30 shadow-lg border-b border-slate-800">
+    <div class="max-w-2xl mx-auto px-4 py-3">
+      <div class="flex items-center justify-between gap-2 mb-2.5">
+        <div class="flex items-center gap-2.5 min-w-0">
+          <div class="w-10 h-10 rounded-xl bg-red-600 flex items-center justify-center shadow-inner shrink-0">
+            <svg class="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M15 6.5V3a1 1 0 0 0-1-1h-2a1 1 0 0 0-1 1v3.5"/>
+              <path d="M9 18h8"/>
+              <path d="M18 3h-3"/>
+              <path d="M11 3a6 6 0 0 0-6 6v11"/>
+              <path d="M9 10a4 4 0 0 1 8 0v10a1 1 0 0 1-1 1h-6a1 1 0 0 1-1-1V10Z"/>
+            </svg>
+          </div>
+          <div class="min-w-0">
+            <div class="flex items-center gap-1.5">
+              <h1 class="font-bold text-base sm:text-lg leading-tight truncate">Contrôle Extincteur</h1>
+              <span class="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-300 border border-blue-400/30 shrink-0">NF S 61-919</span>
+            </div>
+            <p id="header-subtitle" class="text-xs text-slate-400 truncate">Client / Appareil non renseigné</p>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-1.5 shrink-0">
+          <!-- Bouton Installer sur smartphone (masqué automatiquement une fois en mode App) -->
+          <button type="button" id="open-install-btn" title="Installer comme application sur le téléphone" class="px-2.5 py-1.5 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-blue-300 border border-slate-700 active:scale-95 transition flex items-center gap-1">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+            <span class="hidden xs:inline sm:inline">App</span>
+          </button>
+
+          <!-- Badge Décision en temps réel -->
+          <div id="header-status-pill" class="px-3 py-1.5 rounded-xl text-xs font-extrabold uppercase tracking-wider bg-slate-800 text-slate-300 border border-slate-700 shrink-0">
+            En cours
+          </div>
+        </div>
+      </div>
+
+      <!-- Barre d'avancement des points de contrôle -->
+      <div class="flex items-center justify-between text-[11px] text-slate-400 mb-1">
+        <span id="points-summary-text">0 / 0 points contrôlés</span>
+        <div class="flex items-center gap-2 font-mono">
+          <span class="text-emerald-400" id="count-ok">0 OK</span>
+          <span class="text-red-400" id="count-ko">0 KO</span>
+          <span class="text-slate-400" id="count-na">0 N.A.</span>
+        </div>
+      </div>
+      <div class="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
+        <div id="progress-bar" class="h-full bg-gradient-to-r from-blue-500 to-emerald-500 transition-all duration-300 rounded-full" style="width: 0%"></div>
+      </div>
+    </div>
+  </header>
+
+  <!-- CONTENU PRINCIPAL -->
+  <main class="max-w-2xl mx-auto px-4 pt-4 space-y-5">
+
+    <!-- SECTION 1 : EN-TÊTE CLIENT & SITE DE VÉRIFICATION (PERSISTANT) -->
+    <section class="bg-white rounded-2xl p-4 sm:p-5 shadow-sm border border-slate-200 space-y-3.5">
+      <div class="flex items-center justify-between gap-2 border-b border-slate-100 pb-3">
+        <div class="flex items-center gap-2 min-w-0">
+          <span class="w-7 h-7 rounded-lg bg-blue-900 text-white flex items-center justify-center shrink-0">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
+          </span>
+          <div class="min-w-0">
+            <h2 class="font-bold text-base text-slate-900 leading-tight truncate">Client & Site de vérification</h2>
+            <p class="text-[11px] text-slate-500 truncate">Conservé pour tous les appareils du site</p>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-1.5 shrink-0">
+          <!-- Bouton Nouveau Client -->
+          <button type="button" id="open-new-client-modal-btn" title="Nouveau client (effacer tout)" class="px-2.5 py-1.5 rounded-xl text-xs font-bold border border-red-200 bg-red-50 text-red-700 hover:bg-red-100 transition active:scale-95 flex items-center gap-1">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+            <span class="hidden sm:inline">Nouveau client</span>
+          </button>
+
+          <!-- Bouton discret pour verrouiller/déverrouiller les infos client -->
+          <button type="button" id="toggle-client-lock-btn" class="px-3 py-1.5 rounded-xl text-xs font-bold border transition active:scale-95 flex items-center gap-1.5">
+            <!-- Contenu injecté par JS -->
+          </button>
+        </div>
+      </div>
+
+      <div id="client-fields-wrapper" class="space-y-3 transition-opacity">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label for="client-name" class="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Nom du client / Établissement *</label>
+            <input type="text" id="client-name" placeholder="Ex: Garage Auto Sud" class="client-input w-full px-3.5 py-3 bg-slate-50 border border-slate-300 rounded-xl text-base sm:text-sm font-bold text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600 disabled:bg-slate-100 disabled:text-slate-600">
+          </div>
+          <div>
+            <label for="site-name" class="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Site / Bâtiment (si différent)</label>
+            <input type="text" id="site-name" placeholder="Ex: Atelier Carrosserie / Dépôt B" class="client-input w-full px-3.5 py-3 bg-slate-50 border border-slate-300 rounded-xl text-base sm:text-sm font-medium text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600 disabled:bg-slate-100 disabled:text-slate-600">
+          </div>
+        </div>
+
+        <div>
+          <label for="site-address" class="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Adresse complète du site (rue, CP, ville)</label>
+          <input type="text" id="site-address" placeholder="Ex: 14 Avenue des Garages, 13600 La Ciotat" class="client-input w-full px-3.5 py-3 bg-slate-50 border border-slate-300 rounded-xl text-base sm:text-sm font-medium text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600 disabled:bg-slate-100 disabled:text-slate-600">
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-12 gap-3">
+          <div class="sm:col-span-7">
+            <label for="inspector-name" class="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Nom du vérificateur</label>
+            <input type="text" id="inspector-name" placeholder="Ex: Jérôme Sanglard" class="client-input w-full px-3.5 py-3 bg-slate-50 border border-slate-300 rounded-xl text-base sm:text-sm font-bold text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600 disabled:bg-slate-100 disabled:text-slate-600">
+          </div>
+          <div class="sm:col-span-5">
+            <label for="control-date" class="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Date de contrôle</label>
+            <input type="date" id="control-date" class="client-input w-full px-3.5 py-3 bg-slate-50 border border-slate-300 rounded-xl font-mono text-base sm:text-sm font-semibold text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600 disabled:bg-slate-100 disabled:text-slate-600">
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- RÉCAPITULATIF DU PARC CONTRÔLÉ POUR CE CLIENT -->
+    <section id="saved-extinguishers-section" class="bg-white rounded-2xl p-4 sm:p-5 shadow-sm border-2 border-blue-200 space-y-3">
+      <div class="flex items-center justify-between gap-2 border-b border-slate-100 pb-2.5">
+        <div class="flex items-center gap-2">
+          <span class="w-7 h-7 rounded-lg bg-blue-100 text-blue-900 font-mono font-extrabold text-xs flex items-center justify-center shrink-0" id="saved-count-badge">0</span>
+          <div>
+            <h2 class="font-bold text-sm sm:text-base text-slate-900 leading-tight">Parc vérifié pour ce client</h2>
+            <p class="text-[11px] text-slate-500" id="saved-summary-subtitle">Tous ces appareils seront inclus dans le rapport PDF</p>
+          </div>
+        </div>
+        <div id="saved-stats-pills" class="flex items-center gap-1.5 text-[11px] font-extrabold">
+          <!-- Injecté par JS -->
+        </div>
+      </div>
+
+      <div id="saved-extinguishers-list" class="space-y-2">
+        <!-- Liste injectée par JS -->
+      </div>
+    </section>
+
+    <!-- SECTION 2 : IDENTIFICATION DE L'EXTINCTEUR EN COURS -->
+    <section class="bg-white rounded-2xl p-4 sm:p-5 shadow-sm border border-slate-200 space-y-4">
+      <div class="flex items-center justify-between gap-2 border-b border-slate-100 pb-3">
+        <div class="flex items-center gap-2 min-w-0">
+          <span class="w-7 h-7 rounded-lg bg-slate-900 text-white font-mono font-bold text-xs flex items-center justify-center shrink-0">ID</span>
+          <div class="min-w-0">
+            <h2 class="font-bold text-base text-slate-900 truncate" id="current-ext-title">Appareil en cours de contrôle</h2>
+            <p id="editing-indicator" class="hidden text-[11px] font-bold text-amber-700">Mode modification d'un appareil déjà enregistré</p>
+          </div>
+        </div>
+        <button type="button" id="mark-all-ok-btn" class="text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-3 py-2 rounded-xl active:scale-95 transition shrink-0">
+          Tout mettre OK
+        </button>
+      </div>
+
+      <!-- Champs N°, Zone, Marque (text-base sur mobile pour éviter le zoom iOS/Android) -->
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div>
+          <label for="ext-num" class="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">N° / Repère *</label>
+          <input type="text" id="ext-num" placeholder="Ex: EXT-01" class="w-full px-3.5 py-3 bg-slate-50 border border-slate-300 rounded-xl text-base sm:text-sm font-bold text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600">
+        </div>
+        <div>
+          <label for="ext-zone" class="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Zone / Emplacement</label>
+          <input type="text" id="ext-zone" placeholder="Ex: Atelier mécanique, TGBT..." class="w-full px-3.5 py-3 bg-slate-50 border border-slate-300 rounded-xl text-base sm:text-sm font-medium text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600">
+        </div>
+        <div>
+          <label for="ext-brand" class="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Marque</label>
+          <input type="text" id="ext-brand" placeholder="Ex: Desautel, Sicli, Eurofeu..." class="w-full px-3.5 py-3 bg-slate-50 border border-slate-300 rounded-xl text-base sm:text-sm font-medium text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600">
+        </div>
+      </div>
+
+      <!-- Type d'agent / Capacité & Année de fabrication -->
+      <div class="grid grid-cols-1 sm:grid-cols-12 gap-3">
+        <div class="sm:col-span-7">
+          <label for="ext-agent" class="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Type d'agent / Capacité</label>
+          <select id="ext-agent" class="w-full px-3.5 py-3 bg-slate-50 border border-slate-300 rounded-xl text-base sm:text-sm font-semibold text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600">
+            <option value="Eau + Additif 6L / 9L">Eau + Additif 6L / 9L</option>
+            <option value="Poudre ABC 6kg / 9kg">Poudre ABC 6kg / 9kg</option>
+            <option value="CO2 2kg / 5kg">CO2 2kg / 5kg</option>
+            <option value="Sur roues 50kg">Sur roues 50kg</option>
+            <option value="Autre">Autre agent / capacité</option>
+          </select>
+        </div>
+        <div class="sm:col-span-5">
+          <label for="ext-year" class="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Année fabrication (Réf. 2026)</label>
+          <div class="relative">
+            <input type="number" id="ext-year" inputmode="numeric" pattern="[0-9]*" min="1980" max="2026" placeholder="Ex: 2016" class="w-full px-3.5 py-3 bg-slate-50 border border-slate-300 rounded-xl font-mono text-base sm:text-sm font-bold text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600">
+            <span id="ext-age-badge" class="hidden absolute right-2.5 top-1/2 -translate-y-1/2 text-[11px] font-mono font-extrabold px-2 py-0.5 rounded-md bg-slate-200 text-slate-800"></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sélecteur de Technologie (Adapte dynamiquement la Section C) -->
+      <div>
+        <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2">Technologie (adapte la Section C)</label>
+        <div class="grid grid-cols-3 gap-2" id="tech-selector">
+          <button type="button" data-tech="auxiliaire" class="tech-btn py-3 px-2 rounded-xl border-2 text-center transition active:scale-95 flex flex-col items-center justify-center gap-0.5">
+            <span class="text-xs sm:text-sm font-extrabold">Pression auxiliaire</span>
+            <span class="text-[10px] opacity-80">Cartouche sparklet</span>
+          </button>
+          <button type="button" data-tech="permanente" class="tech-btn py-3 px-2 rounded-xl border-2 text-center transition active:scale-95 flex flex-col items-center justify-center gap-0.5">
+            <span class="text-xs sm:text-sm font-extrabold">Pression permanente</span>
+            <span class="text-[10px] opacity-80">Avec manomètre</span>
+          </button>
+          <button type="button" data-tech="co2" class="tech-btn py-3 px-2 rounded-xl border-2 text-center transition active:scale-95 flex flex-col items-center justify-center gap-0.5">
+            <span class="text-xs sm:text-sm font-extrabold">CO2</span>
+            <span class="text-[10px] opacity-80">Dioxyde de carbone</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Zone d'analyse d'âge & alertes réglementaires automatiques (NF S 61-919) -->
+      <div id="regulatory-alerts" class="space-y-2 hidden"></div>
+    </section>
+
+    <!-- SECTION 3 : CHECKLIST DES POINTS DE CONTRÔLE (SECTIONS A, B, C, D) -->
+    <div id="checklist-sections" class="space-y-4">
+      <!-- Généré dynamiquement par JS -->
+    </div>
+
+    <!-- SECTION 4 : PANNEAU DE DÉCISION FINALE : VALIDER OU REFUSER -->
+    <section class="bg-white rounded-2xl p-4 sm:p-5 shadow-md border-2 border-slate-200 space-y-4">
+      <div class="flex items-center justify-between gap-2">
+        <div>
+          <h2 class="font-extrabold text-base sm:text-lg text-slate-900">Décision de contrôle</h2>
+          <p class="text-xs text-slate-500">Statut final de l'extincteur après vérification</p>
+        </div>
+        <div class="flex flex-wrap items-center justify-end gap-1.5">
+          <span id="age-nc-tag" class="hidden text-xs font-bold px-2.5 py-1 rounded-lg bg-red-600 text-white shadow-sm">
+            Non-conformité âge
+          </span>
+          <span id="ko-warning-tag" class="hidden text-xs font-bold px-2.5 py-1 rounded-lg bg-red-100 text-red-700 border border-red-200">
+            Point(s) KO détecté(s)
+          </span>
+        </div>
+      </div>
+
+      <!-- Bandeau d'information si blocage réglementaire lié à l'âge (>= 20 ans) -->
+      <div id="age-lock-notice" class="hidden animate-fade-in p-3 rounded-xl bg-red-50 border border-red-300 text-red-900 text-xs flex items-center gap-2.5">
+        <svg class="w-5 h-5 text-red-600 shrink-0" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+        <div>
+          <span class="font-extrabold">Validation bloquée (NF S 61-919) :</span> L'appareil a atteint ou dépassé <strong>20 ans</strong>. Il est automatiquement classé <strong>NON CONFORME (réforme obligatoire)</strong>.
+        </div>
+      </div>
+
+      <!-- Deux grands boutons tactiles VALIDER / REFUSER -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <button type="button" id="btn-validate" class="py-4 px-4 rounded-2xl border-2 font-extrabold text-base transition active:scale-[0.98] flex items-center justify-center gap-2.5 shadow-sm">
+          <svg class="w-6 h-6 shrink-0" fill="none" stroke="currentColor" stroke-width="2.6" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          <span>VALIDER L'EXTINCTEUR</span>
+        </button>
+
+        <button type="button" id="btn-refuse" class="py-4 px-4 rounded-2xl border-2 font-extrabold text-base transition active:scale-[0.98] flex items-center justify-center gap-2.5 shadow-sm">
+          <svg class="w-6 h-6 shrink-0" fill="none" stroke="currentColor" stroke-width="2.6" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          <span>REFUSER L'EXTINCTEUR</span>
+        </button>
+      </div>
+
+      <!-- Panneau conditionnel si VALIDÉ -->
+      <div id="panel-validated" class="hidden animate-fade-in bg-emerald-50 border-2 border-emerald-300 rounded-2xl p-4">
+        <div class="flex items-start gap-3">
+          <div class="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 mt-0.5">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+          </div>
+          <div class="flex-1">
+            <h3 class="font-extrabold text-emerald-900 text-sm sm:text-base">CONFORME — APPAREIL VALIDÉ</h3>
+            <p class="text-xs text-emerald-800 mt-0.5">Vérification annuelle conforme à la norme NF S 61-919. Étiquette datée apposée et appareil remis sur son support.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Panneau conditionnel si REFUSÉ -->
+      <div id="panel-refused" class="hidden animate-fade-in bg-red-50 border-2 border-red-300 rounded-2xl p-4 space-y-3.5">
+        <div class="flex items-start gap-3">
+          <div class="w-10 h-10 rounded-xl bg-red-600 text-white flex items-center justify-center shrink-0 mt-0.5">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+          </div>
+          <div>
+            <h3 class="font-extrabold text-red-900 text-sm sm:text-base">NON CONFORME — APPAREIL REFUSÉ</h3>
+            <p class="text-xs text-red-800 mt-0.5">Sélectionnez le(s) motif(s) de refus pour le rapport et le devis :</p>
+          </div>
+        </div>
+
+        <!-- Motifs rapides de refus (puces sélectionnables) -->
+        <div class="flex flex-wrap gap-2" id="refusal-reasons-container">
+          <!-- Injecté par JS -->
+        </div>
+
+        <!-- Case à cocher Extincteur de remplacement -->
+        <label class="flex items-center gap-3 p-3.5 bg-white rounded-xl border border-red-200 cursor-pointer select-none">
+          <input type="checkbox" id="replacement-placed" class="w-5 h-5 rounded text-red-600 focus:ring-red-500 border-slate-300">
+          <span class="text-xs sm:text-sm font-bold text-slate-800">Extincteur de remplacement / prêt installé</span>
+        </label>
+      </div>
+
+      <!-- Champ d'observations libres (toujours accessible) -->
+      <div>
+        <label for="general-notes" class="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Observations / Mesures relevées (tare/poids CO2, remarques...)</label>
+        <textarea id="general-notes" rows="2" placeholder="Ex: Tare 4.15 kg / Poids relevé 6.12 kg (OK) ou accès bloqué par véhicule..." class="w-full px-3.5 py-3 bg-slate-50 border border-slate-300 rounded-xl text-base sm:text-sm text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600"></textarea>
+      </div>
+    </section>
+
+    <!-- SECTION 5 : ACTIONS DE FIN DE CONTRÔLE -->
+    <section class="space-y-3 pt-1">
+      <!-- Bouton Enregistrer & Extincteur suivant (même client) -->
+      <button type="button" id="open-reset-modal-btn" class="w-full py-4 px-5 rounded-2xl bg-blue-900 hover:bg-blue-800 text-white font-extrabold text-sm sm:text-base transition active:scale-[0.99] flex items-center justify-center gap-2.5 shadow-lg">
+        <svg class="w-5 h-5 text-blue-300" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+        <span id="next-ext-btn-label">Enregistrer & Extincteur suivant (même client)</span>
+      </button>
+
+      <!-- Bouton Télécharger le rapport complet en PDF -->
+      <button type="button" id="download-pdf-btn" class="w-full py-4 px-5 rounded-2xl bg-red-600 hover:bg-red-700 active:scale-[0.99] text-white font-extrabold text-sm sm:text-base transition flex items-center justify-center gap-3 shadow-lg border border-red-500">
+        <span class="inline-flex items-center justify-center bg-white text-red-600 rounded-lg px-2 py-0.5 text-xs font-black tracking-tight shadow-sm shrink-0">
+          <svg class="w-4 h-4 mr-1 text-red-600" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+          PDF
+        </span>
+        <span id="download-pdf-btn-label">Télécharger le rapport complet PDF (1 appareil)</span>
+      </button>
+    </section>
+
+  </main>
+
+  <script>
+    /**
+     * INITIALISATION PWA (MANIFESTE DYNAMIQUE + SERVICE WORKER + INSTALLATION MOBILE)
+     */
+    let deferredInstallPrompt = null;
+
+    function setupMobileAppCapabilities() {
+      // 1. Génération dynamique du Web App Manifest (icône, nom, mode plein écran standalone)
+      try {
+        const iconSvg = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='112' fill='%23dc2626'/%3E%3Cg fill='none' stroke='%23ffffff' stroke-width='28' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M310 145V88a20 20 0 0 0-20-20h-44a20 20 0 0 0-20 20v57'/%3E%3Cpath d='M196 384h156'/%3E%3Cpath d='M374 88h-64'/%3E%3Cpath d='M234 88c-66 0-120 54-120 120v216'/%3E%3Cpath d='M196 216a78 78 0 0 1 156 0v192a20 20 0 0 1-20 20H216a20 20 0 0 1-20-20V216Z'/%3E%3C/g%3E%3C/svg%3E";
+        const manifest = {
+          name: 'Contrôle Extincteur — NF S 61-919',
+          short_name: 'Extincteurs',
+          description: 'Application terrain de vérification annuelle des extincteurs selon la norme NF S 61-919',
+          start_url: window.location.href,
+          display: 'standalone',
+          orientation: 'portrait',
+          background_color: '#020617',
+          theme_color: '#020617',
+          icons: [
+            {
+              src: iconSvg,
+              sizes: '192x192 512x512',
+              type: 'image/svg+xml',
+              purpose: 'any maskable'
+            }
+          ]
+        };
+        const manifestBlob = new Blob([JSON.stringify(manifest)], { type: 'application/manifest+json' });
+        const manifestUrl = URL.createObjectURL(manifestBlob);
+        const manifestLink = document.getElementById('manifest-link');
+        if (manifestLink) {
+          manifestLink.setAttribute('href', manifestUrl);
+        }
+      } catch (e) {
+        console.warn('Manifest PWA non généré :', e);
+      }
+
+      // 2. Masquer le bouton "App" si déjà lancé en mode application installée (standalone)
+      const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+      const installBtn = document.getElementById('open-install-btn');
+      if (isStandalone && installBtn) {
+        installBtn.classList.add('hidden');
+      }
+
+      // 3. Capturer l'événement natif d'installation Android/Chrome
+      window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        deferredInstallPrompt = e;
+        const nativeBtn = document.getElementById('native-install-trigger-btn');
+        if (nativeBtn) nativeBtn.classList.remove('hidden');
+      });
+
+      window.addEventListener('appinstalled', () => {
+        deferredInstallPrompt = null;
+        if (installBtn) installBtn.classList.add('hidden');
+        showToast('Application installée sur votre smartphone !');
+      });
+
+      // 4. Mise en cache hors-ligne des ressources si servi via HTTP/HTTPS
+      if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.protocol === 'http:')) {
+        try {
+          const swCode = `
+            const CACHE_NAME = 'extincteur-nfs61919-v1';
+            self.addEventListener('install', event => {
+              self.skipWaiting();
+            });
+            self.addEventListener('activate', event => {
+              event.waitUntil(clients.claim());
+            });
+            self.addEventListener('fetch', event => {
+              if (event.request.method !== 'GET') return;
+              event.respondWith(
+                caches.open(CACHE_NAME).then(cache =>
+                  cache.match(event.request).then(cached => {
+                    const networkFetch = fetch(event.request).then(response => {
+                      if (response && (response.status === 200 || response.type === 'opaque')) {
+                        cache.put(event.request, response.clone());
+                      }
+                      return response;
+                    }).catch(() => cached);
+                    return cached || networkFetch;
+                  })
+                )
+              );
+            });
+          `;
+          const swBlob = new Blob([swCode], { type: 'application/javascript' });
+          const swUrl = URL.createObjectURL(swBlob);
+          navigator.serviceWorker.register(swUrl).catch(() => {});
+        } catch (e) {}
+      }
+    }
+
+    /**
+     * RÉFÉRENTIEL DES POINTS DE CONTRÔLE (NORME NF S 61-919 - RÉFÉRENCE 2026)
+     */
+    const REFERENCE_YEAR = 2026;
+    const MAX_LIFESPAN_YEARS = 20;
+    const REFORM_REASON = 'Appareil >= 20 ans / Réforme obligatoire';
+    const REVISION_REASON = 'Révision quinquennale/décennale échue';
+    const ADDITIVE_FLUOR_REASON = 'Additif fluoré à remplacer (> 5 ans)';
+    const STORAGE_KEY = 'fiche_extincteur_client_nfs61919_2026_v5';
+
+    const SECTIONS_BASE = [
+      {
+        code: 'A',
+        title: 'Implantation & Environnement',
+        items: [
+          { id: 'a1', label: 'Accessibilité dégagée (aucun obstacle devant l\'appareil)', detail: 'Abords libres de tout véhicule, servante d’atelier ou stockage.' },
+          { id: 'a2', label: 'Support mural solide / socle adapté et bien fixé', detail: 'Fixation stable et hauteur réglementaire respectée.' },
+          { id: 'a3', label: 'Panneau de signalisation présent, visible et conforme', detail: 'Signalétique réglementaire visible au-dessus de l’appareil.' },
+          { id: 'a4', label: 'Propreté extérieure de l\'appareil (absence de graisse, poussière excessive ou choc)', detail: 'Poignée et cuve propres, utilisables immédiatement en urgence.' }
+        ]
+      },
+      {
+        code: 'B',
+        title: 'Corps, Flexible & Organes externes',
+        items: [
+          { id: 'b1', label: 'État extérieur de la cuve (absence de corrosion, bosse, fissure)', detail: 'Intégrité structurelle complète de l’enveloppe sous pression.' },
+          { id: 'b2', label: 'Lisibilité du mode d\'emploi et des marquages réglementaires', detail: 'Classes de feu, consignes d’utilisation et marquages CE/NF lisibles.' },
+          { id: 'b3', label: 'État du flexible et du diffuseur / tromblon (non percé, non obstrué)', detail: 'Absence de craquelure, pliure permanente ou corps étranger.' },
+          { id: 'b4', label: 'Présence et intégrité de la goupille de sécurité', detail: 'Goupille non tordue et correctement engagée avant dépose.' }
+        ]
+      }
+    ];
+
+    const SECTION_C_BY_TECH = {
+      auxiliaire: {
+        code: 'C',
+        title: 'Contrôle technique interne — Pression auxiliaire',
+        items: [
+          { id: 'c_aux_1', label: 'Démontage de la tête et contrôle du filetage', detail: 'Vérification de l’absence d’oxydation, de jeu anormal et mobilité du percuteur.' },
+          { id: 'c_aux_2', label: 'État de l\'agent extincteur (fluidité poudre / niveau et additif non fluoré si >= 5 ans)', detail: 'Brassage de la poudre (absence d’agglomérats) ou contrôle charge liquide (vérifier / remplacer par additif non fluoré si > 5 ans).' },
+          { id: 'c_aux_3', label: 'Pesée de la cartouche de gaz (sparklet) conforme au poids gravé', detail: 'Contrôle à la balance électronique selon la tolérance constructeur.' },
+          { id: 'c_aux_4', label: 'Remplacement du joint torique et graissage léger', detail: 'Pose d’un joint neuf et graissage silicone léger sur le filetage.' }
+        ]
+      },
+      permanente: {
+        code: 'C',
+        title: 'Contrôle technique interne — Pression permanente',
+        items: [
+          { id: 'c_perm_1', label: 'Aiguille du manomètre dans la zone verte', detail: 'Lecture visuelle de la pression nominale de service.' },
+          { id: 'c_perm_2', label: 'Contrôle de la pression avec manomètre étalon', detail: 'Vérification de cohérence et bon fonctionnement de l’indicateur.' },
+          { id: 'c_perm_3', label: 'Contrôle d\'étanchéité de la valve et de la tête', detail: 'Absence de micro-fuite au niveau du raccord et de la soupape.' },
+          { id: 'c_perm_4', label: 'Contrôle de l\'additif (vérification / remplacement en non fluoré si >= 5 ans)', detail: 'Pour les appareils à eau + additif de plus de 5 ans, vérifier ou passer sur un additif sans fluor.' }
+        ]
+      },
+      co2: {
+        code: 'C',
+        title: 'Contrôle technique interne — CO2',
+        items: [
+          { id: 'c_co2_1', label: 'Pesée complète de la bouteille conforme à la tare gravée sur le col', detail: 'Vérification de la charge nette de CO2 (mise en recharge si perte hors tolérance).' },
+          { id: 'c_co2_2', label: 'État du tromblon et du flexible haute pression', detail: 'Vérification de l’isolation thermique et de la fixation du tromblon.' },
+          { id: 'c_co2_3', label: 'Contrôle de la vanne et de l\'opercule de sécurité', detail: 'Absence de choc sur le robinet et intégrité du disque de rupture.' }
+        ]
+      }
+    };
+
+    const SECTION_D = {
+      code: 'D',
+      title: 'Remise en état & Traçabilité',
+      items: [
+        { id: 'd1', label: 'Pose d\'une goupille neuve et d\'un plomb / scellé neuf', detail: 'Verrouillage sécurisé attestant du contrôle effectué.' },
+        { id: 'd2', label: 'Remplissage et collage de l\'étiquette de vérification annuelle datée', detail: 'Inscription de la date (2026) et signature/poinçon du vérificateur.' },
+        { id: 'd3', label: 'Remise en place immédiate de l\'extincteur sur son support', detail: 'Continuité immédiate de la sécurité incendie sur la zone.' }
+      ]
+    };
+
+    const REFUSAL_REASONS = [
+      'Appareil >= 20 ans / Réforme obligatoire',
+      'Additif fluoré à remplacer (> 5 ans)',
+      'Cuve corrodée ou endommagée',
+      'Cartouche gaz / CO2 vide ou hors tolérance',
+      'Révision quinquennale/décennale échue',
+      'Manomètre défectueux',
+      'Flexible ou tromblon HS',
+      'Agent altéré'
+    ];
+
+    /**
+     * DATE DU JOUR AU FORMAT YYYY-MM-DD
+     */
+    function getTodayISO() {
+      const now = new Date();
+      const y = now.getFullYear();
+      const m = String(now.getMonth() + 1).padStart(2, '0');
+      const d = String(now.getDate()).padStart(2, '0');
+      return `${y}-${m}-${d}`;
+    }
+
+    function generateId() {
+      return 'ext_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7);
+    }
+
+    /**
+     * ÉTAT GLOBAL DE L'APPLICATION
+     */
+    let state = {
+      clientName: '',
+      siteName: '',
+      siteAddress: '',
+      inspectorName: 'Jérôme Sanglard',
+      controlDate: getTodayISO(),
+      clientLocked: false,
+
+      savedExtinguishers: [],
+
+      currentId: null,
+      extNum: '',
+      extZone: '',
+      extBrand: '',
+      extAgent: 'Eau + Additif 6L / 9L',
+      tech: 'auxiliaire',
+      extYear: '',
+      autoAgeRefused: false,
+      ageRevisionChecked: false,
+      additiveNonFluorStatus: null,
+      checks: {},
+      decision: null,
+      refusalReasons: [],
+      replacementPlaced: false,
+      notes: ''
+    };
+
+    /**
+     * ANALYSE RÉGLEMENTAIRE DE L'ÂGE D'UN EXTINCTEUR (NF S 61-919)
+     */
+    function evaluateAgeForData(extYear, tech) {
+      const raw = String(extYear || '').trim();
+      if (raw.length !== 4) {
+        return { valid: false };
+      }
+      const yearNum = parseInt(raw, 10);
+      if (isNaN(yearNum) || yearNum < 1950 || yearNum > REFERENCE_YEAR) {
+        return { valid: false };
+      }
+
+      const age = REFERENCE_YEAR - yearNum;
+      const isOver20 = age >= MAX_LIFESPAN_YEARS;
+      const is5Year = age === 5;
+      const is10Year = age === 10;
+      const is15Year = age === 15;
+      const isCo2Over10 = tech === 'co2' && age >= 10 && !isOver20;
+
+      let status = 'ok';
+      let label = `Âge : ${age} an${age > 1 ? 's' : ''} — Durée de vie conforme (< 20 ans)`;
+      let detail = 'Maintenance annuelle standard applicable selon la norme NF S 61-919.';
+      let milestoneName = '';
+
+      if (isOver20) {
+        status = 'non_conforme';
+        label = `NON CONFORME — Appareil de ${age} ans (Fab. ${yearNum})`;
+        detail = 'Durée de vie maximale de 20 ans atteinte ou dépassée (norme NF S 61-919). Réforme obligatoire et remplacement nécessaire.';
+      } else if (is10Year || isCo2Over10) {
+        status = 'warning';
+        milestoneName = is10Year ? 'Révision décennale (10 ans)' : `Requalification CO2 (>= 10 ans — ${age} ans)`;
+        label = `CONTRÔLE D'ÉCHÉANCE — ${milestoneName}`;
+        detail = tech === 'co2'
+          ? 'Contrôler la date de requalification périodique décennale gravée sur l’ogive de la bouteille CO2. En l’absence de marquage valide, déclarer l’appareil non conforme.'
+          : 'Vérifier la réalisation de la révision décennale / maintenance approfondie en atelier (NF S 61-919).';
+      } else if (is5Year || is15Year) {
+        status = 'warning';
+        milestoneName = is5Year ? 'Révision quinquennale (5 ans)' : 'Révision 15 ans';
+        label = `CONTRÔLE D'ÉCHÉANCE — ${milestoneName}`;
+        detail = 'Vérifier l’attestation/étiquette de maintenance approfondie quinquennale selon les préconisations constructeur et NF S 61-919.';
+      }
+
+      return {
+        valid: true,
+        yearNum,
+        age,
+        status,
+        isOver20,
+        isMilestone: status === 'warning',
+        milestoneName,
+        label,
+        detail
+      };
+    }
+
+    function evaluateExtinguisherAge() {
+      return evaluateAgeForData(state.extYear, state.tech);
+    }
+
+    /**
+     * APPLIQUE AUTOMATIQUEMENT LA NON-CONFORMITÉ SI ÂGE >= 20 ANS
+     */
+    function applyAutomaticAgeCompliance() {
+      const info = evaluateExtinguisherAge();
+
+      if (info.valid && info.isOver20) {
+        state.decision = 'REFUSÉ';
+        state.autoAgeRefused = true;
+        if (!state.refusalReasons.includes(REFORM_REASON)) {
+          state.refusalReasons.unshift(REFORM_REASON);
+        }
+      } else if (state.autoAgeRefused) {
+        state.autoAgeRefused = false;
+        state.refusalReasons = state.refusalReasons.filter(r => r !== REFORM_REASON);
+        if (state.decision === 'REFUSÉ' && state.refusalReasons.length === 0) {
+          state.decision = null;
+        }
+      }
+    }
+
+    window.declareAgeRevisionNonConforme = function() {
+      const info = evaluateExtinguisherAge();
+      state.decision = 'REFUSÉ';
+      state.ageRevisionChecked = false;
+      if (!state.refusalReasons.includes(REVISION_REASON)) {
+        state.refusalReasons.push(REVISION_REASON);
+      }
+      if (info.valid) {
+        const noteSnippet = `Non-conformité liée à l'âge (${info.age} ans - fab. ${info.yearNum}) : ${info.milestoneName} non justifiée / échue.`;
+        if (!state.notes.includes(noteSnippet)) {
+          state.notes = state.notes.trim() ? `${state.notes.trim()}\n${noteSnippet}` : noteSnippet;
+          document.getElementById('general-notes').value = state.notes;
+        }
+      }
+      saveState();
+      renderRegulatoryAlerts();
+      renderRefusalReasons();
+      updateHeaderAndDecisionUI();
+      showToast('Appareil déclaré NON CONFORME (révision échue)', true);
+    };
+
+    window.confirmAgeRevisionValid = function() {
+      state.ageRevisionChecked = true;
+      state.refusalReasons = state.refusalReasons.filter(r => r !== REVISION_REASON);
+      saveState();
+      renderRegulatoryAlerts();
+      renderRefusalReasons();
+      updateHeaderAndDecisionUI();
+      showToast('Échéance de révision validée comme conforme');
+    };
+
+    window.setAdditiveNonFluorStatus = function(status) {
+      const info = evaluateExtinguisherAge();
+      state.additiveNonFluorStatus = status;
+
+      // Nettoyer les anciennes lignes automatiques liées à l'additif dans les notes
+      const cleanedLines = (state.notes || '')
+        .split('\n')
+        .filter(line => !line.startsWith('Additif (> 5 ans) :') && !line.startsWith('Non-conformité additif (> 5 ans) :'));
+
+      const ageSuffix = info.valid ? ` (${info.age} ans - fab. ${info.yearNum})` : '';
+
+      if (status === 'checked_ok') {
+        state.refusalReasons = state.refusalReasons.filter(r => r !== ADDITIVE_FLUOR_REASON);
+        cleanedLines.push(`Additif (> 5 ans) : vérifié conforme (non fluoré)${ageSuffix}.`);
+        showToast('Additif vérifié non fluoré (OK)');
+      } else if (status === 'replaced') {
+        state.refusalReasons = state.refusalReasons.filter(r => r !== ADDITIVE_FLUOR_REASON);
+        cleanedLines.push(`Additif (> 5 ans) : remplacé par un additif non fluoré${ageSuffix}.`);
+        showToast('Remplacement en additif non fluoré enregistré');
+      } else if (status === 'non_conforme') {
+        state.decision = 'REFUSÉ';
+        if (!state.refusalReasons.includes(ADDITIVE_FLUOR_REASON)) {
+          state.refusalReasons.push(ADDITIVE_FLUOR_REASON);
+        }
+        cleanedLines.push(`Non-conformité additif (> 5 ans) : additif fluoré à remplacer par du non fluoré${ageSuffix}.`);
+        showToast('NON CONFORME : Additif fluoré à remplacer (> 5 ans)', true);
+      }
+
+      state.notes = cleanedLines.join('\n').trim();
+      document.getElementById('general-notes').value = state.notes;
+
+      saveState();
+      renderRegulatoryAlerts();
+      renderRefusalReasons();
+      renderSavedExtinguishersList();
+      updateHeaderAndDecisionUI();
+    };
+
+    /**
+     * PERSISTANCE LOCALSTORAGE
+     */
+    function saveState() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      } catch (e) {
+        console.warn('Sauvegarde locale indisponible', e);
+      }
+    }
+
+    function loadState() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          state = { ...state, ...parsed };
+          if (!Array.isArray(state.savedExtinguishers)) state.savedExtinguishers = [];
+          if (!state.controlDate) state.controlDate = getTodayISO();
+          if (parsed.inspectorName === undefined) state.inspectorName = 'Jérôme Sanglard';
+        }
+      } catch (e) {
+        console.warn('Erreur lecture sauvegarde', e);
+      }
+    }
+
+    /**
+     * CAPTURE DE L'EXTINCTEUR EN COURS ET CONSOLIDATION POUR LE RAPPORT
+     */
+    function buildCurrentExtinguisherObject() {
+      const fallbackIndex = state.savedExtinguishers.length + 1;
+      const num = state.extNum.trim() || `EXT-${String(fallbackIndex).padStart(2, '0')}`;
+      return {
+        id: state.currentId || generateId(),
+        extNum: num,
+        extZone: state.extZone.trim(),
+        extBrand: state.extBrand.trim(),
+        extAgent: state.extAgent,
+        tech: state.tech,
+        extYear: String(state.extYear || '').trim(),
+        additiveNonFluorStatus: state.additiveNonFluorStatus || null,
+        checks: { ...state.checks },
+        decision: state.decision,
+        refusalReasons: [...state.refusalReasons],
+        replacementPlaced: !!state.replacementPlaced,
+        notes: state.notes.trim()
+      };
+    }
+
+    function isCurrentFormStarted() {
+      return Boolean(
+        state.extNum.trim() ||
+        state.extZone.trim() ||
+        state.extBrand.trim() ||
+        String(state.extYear || '').trim() ||
+        Object.keys(state.checks).length > 0 ||
+        state.decision !== null ||
+        state.notes.trim()
+      );
+    }
+
+    function saveCurrentExtinguisherToList() {
+      const item = buildCurrentExtinguisherObject();
+      const idx = state.savedExtinguishers.findIndex(e => e.id === item.id);
+      if (idx >= 0) {
+        state.savedExtinguishers[idx] = item;
+      } else {
+        state.savedExtinguishers.push(item);
+      }
+      state.currentId = item.id;
+      saveState();
+      return item;
+    }
+
+    /**
+     * RETOURNE LA TOTALITÉ DES EXTINCTEURS DU CLIENT (ENREGISTRÉS + EN COURS SI RENSEIGNÉ)
+     */
+    function getAllExtinguishersForClient() {
+      const list = state.savedExtinguishers.map(e => ({
+        ...e,
+        checks: { ...e.checks },
+        refusalReasons: [...e.refusalReasons]
+      }));
+
+      if (isCurrentFormStarted()) {
+        const current = buildCurrentExtinguisherObject();
+        const existingIdx = list.findIndex(e => e.id === current.id);
+        if (existingIdx >= 0) {
+          list[existingIdx] = current;
+        } else {
+          list.push(current);
+        }
+      } else if (list.length === 0) {
+        list.push(buildCurrentExtinguisherObject());
+      }
+
+      return list;
+    }
+
+    /**
+     * CHARGER UN EXTINCTEUR DEPUIS LA LISTE DU PARC POUR LE MODIFIER
+     */
+    window.loadSavedExtinguisherForEdit = function(id) {
+      if (isCurrentFormStarted()) {
+        saveCurrentExtinguisherToList();
+      }
+
+      const target = state.savedExtinguishers.find(e => e.id === id);
+      if (!target) return;
+
+      state.currentId = target.id;
+      state.extNum = target.extNum;
+      state.extZone = target.extZone;
+      state.extBrand = target.extBrand;
+      state.extAgent = target.extAgent;
+      state.tech = target.tech;
+      state.extYear = target.extYear;
+      state.additiveNonFluorStatus = target.additiveNonFluorStatus || null;
+      state.checks = { ...target.checks };
+      state.decision = target.decision;
+      state.refusalReasons = [...target.refusalReasons];
+      state.replacementPlaced = target.replacementPlaced;
+      state.notes = target.notes;
+      state.autoAgeRefused = false;
+      state.ageRevisionChecked = false;
+
+      applyAutomaticAgeCompliance();
+      saveState();
+      syncInputsFromState();
+      renderRegulatoryAlerts();
+      renderTechSelector();
+      renderChecklist();
+      renderRefusalReasons();
+      renderSavedExtinguishersList();
+      updateHeaderAndDecisionUI();
+
+      document.getElementById('current-ext-title').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      showToast(`Modification de l'appareil ${target.extNum}`);
+    };
+
+    /**
+     * SUPPRIMER UN EXTINCTEUR DE LA LISTE DU PARC
+     */
+    window.deleteSavedExtinguisher = function(id, event) {
+      if (event) event.stopPropagation();
+      state.savedExtinguishers = state.savedExtinguishers.filter(e => e.id !== id);
+      if (state.currentId === id) {
+        state.currentId = null;
+      }
+      saveState();
+      renderSavedExtinguishersList();
+      updateHeaderAndDecisionUI();
+      showToast('Appareil retiré de la liste du client', true);
+    };
+
+    /**
+     * RENDU DE LA LISTE DU PARC VÉRIFIÉ POUR LE CLIENT
+     */
+    function renderSavedExtinguishersList() {
+      const allList = getAllExtinguishersForClient();
+      const savedList = state.savedExtinguishers;
+      const countBadge = document.getElementById('saved-count-badge');
+      const statsPills = document.getElementById('saved-stats-pills');
+      const listContainer = document.getElementById('saved-extinguishers-list');
+      const editingIndicator = document.getElementById('editing-indicator');
+      const currentTitle = document.getElementById('current-ext-title');
+
+      const totalForPdf = allList.length;
+      countBadge.textContent = totalForPdf;
+
+      const valCount = allList.filter(e => e.decision === 'VALIDÉ').length;
+      const refCount = allList.filter(e => e.decision === 'REFUSÉ').length;
+      const encCount = totalForPdf - valCount - refCount;
+
+      let pillsHtml = '';
+      if (valCount > 0) {
+        pillsHtml += `<span class="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800">${valCount} Validé${valCount > 1 ? 's' : ''}</span>`;
+      }
+      if (refCount > 0) {
+        pillsHtml += `<span class="px-2 py-0.5 rounded-md bg-red-100 text-red-800">${refCount} Refusé${refCount > 1 ? 's' : ''}</span>`;
+      }
+      if (encCount > 0) {
+        pillsHtml += `<span class="px-2 py-0.5 rounded-md bg-slate-100 text-slate-600">${encCount} En cours</span>`;
+      }
+      statsPills.innerHTML = pillsHtml;
+
+      const pdfLabel = document.getElementById('download-pdf-btn-label');
+      pdfLabel.textContent = `Télécharger le rapport complet PDF (${totalForPdf} appareil${totalForPdf > 1 ? 's' : ''})`;
+
+      if (state.currentId && savedList.some(e => e.id === state.currentId)) {
+        editingIndicator.classList.remove('hidden');
+        currentTitle.textContent = `Modification : ${state.extNum.trim() || 'Appareil'}`;
+      } else {
+        editingIndicator.classList.add('hidden');
+        const numDisplay = state.extNum.trim() ? ` (${state.extNum.trim()})` : ` #${savedList.length + 1}`;
+        currentTitle.textContent = `Appareil en cours${numDisplay}`;
+      }
+
+      if (savedList.length === 0) {
+        listContainer.innerHTML = `
+          <div class="text-xs text-slate-500 bg-slate-50 border border-dashed border-slate-200 rounded-xl p-3 text-center">
+            Aucun appareil archivé pour le moment. Contrôlez l'appareil ci-dessous puis cliquez sur <strong>« Enregistrer & Extincteur suivant »</strong> pour cumuler tout le parc client dans le PDF.
+          </div>
+        `;
+        return;
+      }
+
+      listContainer.innerHTML = savedList.map((ext, index) => {
+        const isEditingThis = state.currentId === ext.id;
+        let badgeClass = 'bg-slate-200 text-slate-700';
+        let badgeText = 'EN COURS';
+        if (ext.decision === 'VALIDÉ') {
+          badgeClass = 'bg-emerald-600 text-white';
+          badgeText = 'VALIDÉ';
+        } else if (ext.decision === 'REFUSÉ') {
+          badgeClass = 'bg-red-600 text-white';
+          badgeText = 'REFUSÉ';
+        }
+
+        const subDetails = [
+          ext.extZone || 'Zone non précisée',
+          ext.extAgent,
+          ext.extYear ? `Fab. ${ext.extYear}` : null
+        ].filter(Boolean).join(' • ');
+
+        return `
+          <div onclick="loadSavedExtinguisherForEdit('${ext.id}')" class="cursor-pointer p-3 rounded-xl border transition flex items-center justify-between gap-2.5 ${isEditingThis ? 'border-amber-400 bg-amber-50/70 ring-1 ring-amber-400' : 'border-slate-200 bg-slate-50/70 hover:bg-blue-50/50 hover:border-blue-300'}">
+            <div class="min-w-0 flex-1">
+              <div class="flex items-center gap-2">
+                <span class="text-xs font-mono font-extrabold text-slate-500">#${index + 1}</span>
+                <span class="text-sm font-extrabold text-slate-900 truncate">${ext.extNum}</span>
+                ${isEditingThis ? '<span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-200 text-amber-900">En édition</span>' : ''}
+              </div>
+              <p class="text-xs text-slate-600 truncate mt-0.5">${subDetails}</p>
+            </div>
+            <div class="flex items-center gap-2 shrink-0">
+              <span class="px-2.5 py-1 rounded-lg text-[10px] font-extrabold uppercase tracking-wider ${badgeClass}">${badgeText}</span>
+              <button type="button" onclick="deleteSavedExtinguisher('${ext.id}', event)" title="Supprimer cet appareil" class="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    /**
+     * TOAST NON INTRUSIF
+     */
+    let toastTimeout;
+    function showToast(msg, isError = false) {
+      const toast = document.getElementById('toast');
+      const toastMsg = document.getElementById('toast-msg');
+      const toastIcon = document.getElementById('toast-icon');
+
+      toastMsg.textContent = msg;
+      toastIcon.className = isError ? 'text-red-400 shrink-0' : 'text-emerald-400 shrink-0';
+      toastIcon.innerHTML = isError
+        ? '<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>'
+        : '<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>';
+
+      toast.classList.remove('opacity-0', 'translate-y-4');
+      toast.classList.add('opacity-100', 'translate-y-0');
+
+      clearTimeout(toastTimeout);
+      toastTimeout = setTimeout(() => {
+        toast.classList.add('opacity-0', 'translate-y-4');
+        toast.classList.remove('opacity-100', 'translate-y-0');
+      }, 2800);
+    }
+
+    /**
+     * VERROUILLAGE / DÉVERROUILLAGE DES INFOS CLIENT & SITE
+     */
+    function renderClientLockState() {
+      const btn = document.getElementById('toggle-client-lock-btn');
+      const inputs = document.querySelectorAll('.client-input');
+
+      inputs.forEach(inp => {
+        inp.disabled = state.clientLocked;
+      });
+
+      if (state.clientLocked) {
+        btn.className = 'px-3 py-1.5 rounded-xl text-xs font-bold border border-blue-300 bg-blue-50 text-blue-800 hover:bg-blue-100 transition active:scale-95 flex items-center gap-1.5 shrink-0';
+        btn.innerHTML = `
+          <svg class="w-3.5 h-3.5 text-blue-700" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          <span>Verrouillé</span>
+        `;
+      } else {
+        btn.className = 'px-3 py-1.5 rounded-xl text-xs font-bold border border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 transition active:scale-95 flex items-center gap-1.5 shrink-0';
+        btn.innerHTML = `
+          <svg class="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>
+          <span>Verrouiller</span>
+        `;
+      }
+    }
+
+    /**
+     * CALCUL AUTOMATIQUE DE L'ÂGE (RÉFÉRENCE 2026) & ALERTES RÉGLEMENTAIRES
+     */
+    function renderRegulatoryAlerts() {
+      const container = document.getElementById('regulatory-alerts');
+      const ageBadge = document.getElementById('ext-age-badge');
+      const info = evaluateExtinguisherAge();
+
+      if (!info.valid) {
+        ageBadge.classList.add('hidden');
+        container.innerHTML = '';
+        container.classList.add('hidden');
+        return;
+      }
+
+      ageBadge.textContent = `${info.age} an${info.age > 1 ? 's' : ''}`;
+      ageBadge.classList.remove('hidden');
+
+      if (info.isOver20) {
+        ageBadge.className = 'absolute right-2.5 top-1/2 -translate-y-1/2 text-[11px] font-mono font-extrabold px-2 py-0.5 rounded-md bg-red-600 text-white';
+        container.classList.remove('hidden');
+        container.innerHTML = `
+          <div class="p-3.5 rounded-xl border-2 bg-red-50 border-red-600 text-red-950 animate-fade-in shadow-sm">
+            <div class="flex items-start gap-2.5">
+              <svg class="w-5 h-5 shrink-0 mt-0.5 text-red-600" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+              <div class="flex-1">
+                <div class="flex flex-wrap items-center justify-between gap-1">
+                  <span class="text-xs sm:text-sm font-extrabold text-red-900">${info.label}</span>
+                  <span class="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded bg-red-600 text-white">Refus automatique</span>
+                </div>
+                <p class="text-xs text-red-900/90 mt-1 leading-relaxed">${info.detail}</p>
+              </div>
+            </div>
+          </div>
+        `;
+      } else if (info.isMilestone) {
+        ageBadge.className = 'absolute right-2.5 top-1/2 -translate-y-1/2 text-[11px] font-mono font-extrabold px-2 py-0.5 rounded-md bg-amber-500 text-white';
+        const isRefusedForRev = state.refusalReasons.includes(REVISION_REASON);
+
+        container.classList.remove('hidden');
+        container.innerHTML = `
+          <div class="p-3.5 rounded-xl border-2 ${isRefusedForRev ? 'bg-red-50 border-red-400 text-red-950' : state.ageRevisionChecked ? 'bg-emerald-50 border-emerald-300 text-emerald-950' : 'bg-amber-50 border-amber-400 text-amber-950'} animate-fade-in space-y-2.5">
+            <div class="flex items-start gap-2.5">
+              <svg class="w-5 h-5 shrink-0 mt-0.5 ${isRefusedForRev ? 'text-red-600' : state.ageRevisionChecked ? 'text-emerald-600' : 'text-amber-600'}" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+              <div class="flex-1">
+                <div class="text-xs sm:text-sm font-extrabold">${info.label}</div>
+                <p class="text-xs opacity-90 mt-0.5 leading-relaxed">${info.detail}</p>
+              </div>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+              <button type="button" onclick="confirmAgeRevisionValid()" class="py-2.5 px-3 rounded-xl text-xs font-extrabold border transition active:scale-95 flex items-center justify-center gap-1.5 ${state.ageRevisionChecked && !isRefusedForRev ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm' : 'bg-white text-emerald-800 border-emerald-300 hover:bg-emerald-50'}">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                <span>Révision justifiée (OK)</span>
+              </button>
+              <button type="button" onclick="declareAgeRevisionNonConforme()" class="py-2.5 px-3 rounded-xl text-xs font-extrabold border transition active:scale-95 flex items-center justify-center gap-1.5 ${isRefusedForRev ? 'bg-red-600 text-white border-red-600 shadow-sm' : 'bg-white text-red-700 border-red-300 hover:bg-red-50'}">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                <span>Non conforme (Révision échue)</span>
+              </button>
+            </div>
+          </div>
+        `;
+      } else {
+        ageBadge.className = 'absolute right-2.5 top-1/2 -translate-y-1/2 text-[11px] font-mono font-extrabold px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800';
+        container.classList.remove('hidden');
+        container.innerHTML = `
+          <div class="px-3.5 py-2.5 rounded-xl border border-emerald-200 bg-emerald-50/70 text-emerald-900 flex items-center gap-2 text-xs font-semibold animate-fade-in">
+            <svg class="w-4 h-4 text-emerald-600 shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            <span>${info.label}</span>
+          </div>
+        `;
+      }
+
+      // Alerte spécifique Additif Non Fluoré pour les appareils de >= 5 ans (hors Poudre et CO2)
+      const isAdditiveCompatible = !state.extAgent.startsWith('Poudre') && !state.extAgent.startsWith('CO2') && state.tech !== 'co2';
+      if (info.valid && info.age >= 5 && !info.isOver20 && isAdditiveCompatible) {
+        const addStatus = state.additiveNonFluorStatus;
+        const isFluorRefused = state.refusalReasons.includes(ADDITIVE_FLUOR_REASON) || addStatus === 'non_conforme';
+
+        let cardStyle = 'bg-blue-50 border-blue-400 text-blue-950';
+        let iconColor = 'text-blue-700';
+        if (isFluorRefused) {
+          cardStyle = 'bg-red-50 border-red-400 text-red-950';
+          iconColor = 'text-red-600';
+        } else if (addStatus === 'checked_ok' || addStatus === 'replaced') {
+          cardStyle = 'bg-emerald-50 border-emerald-400 text-emerald-950';
+          iconColor = 'text-emerald-600';
+        }
+
+        container.innerHTML += `
+          <div class="p-3.5 rounded-xl border-2 ${cardStyle} animate-fade-in space-y-2.5">
+            <div class="flex items-start gap-2.5">
+              <svg class="w-5 h-5 shrink-0 mt-0.5 ${iconColor}" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/></svg>
+              <div class="flex-1">
+                <div class="text-xs sm:text-sm font-extrabold">CONTRÔLE ADDITIF NON FLUORÉ (Appareil >= 5 ans — ${info.age} ans)</div>
+                <p class="text-xs opacity-90 mt-0.5 leading-relaxed">Extincteur de plus de 5 ans : <strong>vérifier l'additif</strong> (absence de fluor / PFAS) et/ou <strong>modifier la charge en additif non fluoré</strong>.</p>
+              </div>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
+              <button type="button" onclick="setAdditiveNonFluorStatus('checked_ok')" class="py-2.5 px-2.5 rounded-xl text-xs font-extrabold border transition active:scale-95 flex items-center justify-center gap-1.5 ${addStatus === 'checked_ok' && !isFluorRefused ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm' : 'bg-white text-emerald-800 border-emerald-300 hover:bg-emerald-50'}">
+                <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                <span>Vérifié : non fluoré</span>
+              </button>
+              <button type="button" onclick="setAdditiveNonFluorStatus('replaced')" class="py-2.5 px-2.5 rounded-xl text-xs font-extrabold border transition active:scale-95 flex items-center justify-center gap-1.5 ${addStatus === 'replaced' && !isFluorRefused ? 'bg-blue-700 text-white border-blue-700 shadow-sm' : 'bg-white text-blue-800 border-blue-300 hover:bg-blue-50'}">
+                <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                <span>Modifié en non fluoré</span>
+              </button>
+              <button type="button" onclick="setAdditiveNonFluorStatus('non_conforme')" class="py-2.5 px-2.5 rounded-xl text-xs font-extrabold border transition active:scale-95 flex items-center justify-center gap-1.5 ${isFluorRefused ? 'bg-red-600 text-white border-red-600 shadow-sm' : 'bg-white text-red-700 border-red-300 hover:bg-red-50'}">
+                <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                <span>Non conforme (Fluoré)</span>
+              </button>
+            </div>
+          </div>
+        `;
+      }
+    }
+
+    function getActiveSectionsForTech(tech) {
+      return [
+        SECTIONS_BASE[0],
+        SECTIONS_BASE[1],
+        SECTION_C_BY_TECH[tech] || SECTION_C_BY_TECH.auxiliaire,
+        SECTION_D
+      ];
+    }
+
+    function getActiveSections() {
+      return getActiveSectionsForTech(state.tech);
+    }
+
+    function renderTechSelector() {
+      document.querySelectorAll('.tech-btn').forEach(btn => {
+        const isSelected = btn.dataset.tech === state.tech;
+        if (isSelected) {
+          btn.className = 'tech-btn py-3 px-2 rounded-xl border-2 border-blue-900 bg-blue-900 text-white text-center transition active:scale-95 flex flex-col items-center justify-center gap-0.5 shadow-sm';
+        } else {
+          btn.className = 'tech-btn py-3 px-2 rounded-xl border-2 border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100 text-center transition active:scale-95 flex flex-col items-center justify-center gap-0.5';
+        }
+      });
+    }
+
+    function renderChecklist() {
+      const container = document.getElementById('checklist-sections');
+      const sections = getActiveSections();
+
+      container.innerHTML = sections.map(sec => {
+        const itemsHtml = sec.items.map(item => {
+          const val = state.checks[item.id] || null;
+
+          let cardBorder = 'border-slate-200 bg-white';
+          if (val === 'OK') cardBorder = 'border-emerald-300 bg-emerald-50/30';
+          if (val === 'KO') cardBorder = 'border-red-400 bg-red-50/50';
+          if (val === 'NA') cardBorder = 'border-slate-300 bg-slate-50/80';
+
+          return `
+            <div class="p-3.5 rounded-xl border ${cardBorder} transition-colors">
+              <div class="mb-2.5">
+                <div class="text-sm font-bold text-slate-900 leading-snug">${item.label}</div>
+                <div class="text-xs text-slate-500 mt-0.5 leading-relaxed">${item.detail}</div>
+              </div>
+              <div class="grid grid-cols-3 gap-2">
+                <button type="button" onclick="setCheckStatus('${item.id}', 'OK')" class="py-3 rounded-xl font-extrabold text-xs tracking-wide transition active:scale-95 flex items-center justify-center gap-1 ${val === 'OK' ? 'bg-emerald-600 text-white shadow-sm ring-2 ring-emerald-600 ring-offset-1' : 'bg-slate-100 text-slate-600 hover:bg-emerald-50 hover:text-emerald-700'}">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.6" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                  OK
+                </button>
+                <button type="button" onclick="setCheckStatus('${item.id}', 'KO')" class="py-3 rounded-xl font-extrabold text-xs tracking-wide transition active:scale-95 flex items-center justify-center gap-1 ${val === 'KO' ? 'bg-red-600 text-white shadow-sm ring-2 ring-red-600 ring-offset-1' : 'bg-slate-100 text-slate-600 hover:bg-red-50 hover:text-red-700'}">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.6" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                  KO
+                </button>
+                <button type="button" onclick="setCheckStatus('${item.id}', 'NA')" class="py-3 rounded-xl font-extrabold text-xs tracking-wide transition active:scale-95 flex items-center justify-center ${val === 'NA' ? 'bg-slate-700 text-white shadow-sm ring-2 ring-slate-700 ring-offset-1' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}">
+                  N.A.
+                </button>
+              </div>
+            </div>
+          `;
+        }).join('');
+
+        return `
+          <section class="bg-white rounded-2xl p-4 sm:p-5 shadow-sm border border-slate-200 space-y-3">
+            <div class="flex items-center gap-2.5 border-b border-slate-100 pb-2.5">
+              <span class="w-7 h-7 rounded-lg bg-blue-900 text-white font-mono font-extrabold text-xs flex items-center justify-center shrink-0">${sec.code}</span>
+              <h2 class="font-extrabold text-sm sm:text-base text-slate-900">${sec.title}</h2>
+            </div>
+            <div class="space-y-2.5">
+              ${itemsHtml}
+            </div>
+          </section>
+        `;
+      }).join('');
+    }
+
+    window.setCheckStatus = function(itemId, status) {
+      if (state.checks[itemId] === status) {
+        delete state.checks[itemId];
+      } else {
+        state.checks[itemId] = status;
+      }
+      saveState();
+      renderChecklist();
+      renderSavedExtinguishersList();
+      updateHeaderAndDecisionUI();
+    };
+
+    function markAllPointsOk() {
+      const sections = getActiveSections();
+      sections.forEach(sec => {
+        sec.items.forEach(item => {
+          state.checks[item.id] = 'OK';
+        });
+      });
+      saveState();
+      renderChecklist();
+      renderSavedExtinguishersList();
+      updateHeaderAndDecisionUI();
+      showToast('Tous les points ont été marqués OK');
+    }
+
+    function renderRefusalReasons() {
+      const container = document.getElementById('refusal-reasons-container');
+      container.innerHTML = REFUSAL_REASONS.map(reason => {
+        const active = state.refusalReasons.includes(reason);
+        return `
+          <button type="button" onclick="toggleRefusalReason('${reason.replace(/'/g, "\\'")}')" class="px-3 py-2.5 rounded-xl text-xs font-bold border transition active:scale-95 text-left ${active ? 'bg-red-600 text-white border-red-600 shadow-sm' : 'bg-white text-slate-700 border-red-200 hover:bg-red-100/60'}">
+            ${active ? '✓ ' : '+ '}${reason}
+          </button>
+        `;
+      }).join('');
+    }
+
+    window.toggleRefusalReason = function(reason) {
+      const idx = state.refusalReasons.indexOf(reason);
+      if (idx >= 0) {
+        state.refusalReasons.splice(idx, 1);
+      } else {
+        state.refusalReasons.push(reason);
+      }
+      saveState();
+      renderRefusalReasons();
+      renderRegulatoryAlerts();
+      renderSavedExtinguishersList();
+      updateHeaderAndDecisionUI();
+    };
+
+    function updateHeaderAndDecisionUI() {
+      const totalClientExts = getAllExtinguishersForClient().length;
+      const subParts = [
+        state.clientName.trim(),
+        state.extNum.trim(),
+        `${totalClientExts} app. parc`
+      ].filter(Boolean);
+      document.getElementById('header-subtitle').textContent = subParts.length > 0 ? subParts.join(' • ') : 'Client / Appareil non renseigné';
+
+      const activeItems = getActiveSections().flatMap(s => s.items);
+      let okCount = 0, koCount = 0, naCount = 0;
+
+      activeItems.forEach(item => {
+        const v = state.checks[item.id];
+        if (v === 'OK') okCount++;
+        else if (v === 'KO') koCount++;
+        else if (v === 'NA') naCount++;
+      });
+
+      const doneCount = okCount + koCount + naCount;
+      const totalCount = activeItems.length;
+      const pct = totalCount > 0 ? Math.round((doneCount / totalCount) * 100) : 0;
+
+      document.getElementById('points-summary-text').textContent = `${doneCount} / ${totalCount} points contrôlés`;
+      document.getElementById('count-ok').textContent = `${okCount} OK`;
+      document.getElementById('count-ko').textContent = `${koCount} KO`;
+      document.getElementById('count-na').textContent = `${naCount} N.A.`;
+      document.getElementById('progress-bar').style.width = `${pct}%`;
+
+      const koTag = document.getElementById('ko-warning-tag');
+      if (koCount > 0) {
+        koTag.textContent = `${koCount} point${koCount > 1 ? 's' : ''} KO détecté${koCount > 1 ? 's' : ''}`;
+        koTag.classList.remove('hidden');
+      } else {
+        koTag.classList.add('hidden');
+      }
+
+      const ageInfo = evaluateExtinguisherAge();
+      const isAgeLocked = ageInfo.valid && ageInfo.isOver20;
+      const hasAgeNonConformity = isAgeLocked || state.refusalReasons.includes(REVISION_REASON);
+
+      const ageNcTag = document.getElementById('age-nc-tag');
+      const ageLockNotice = document.getElementById('age-lock-notice');
+
+      if (hasAgeNonConformity && ageInfo.valid) {
+        ageNcTag.textContent = isAgeLocked ? `Réforme >= 20 ans (${ageInfo.age} ans)` : `Révision échue (${ageInfo.age} ans)`;
+        ageNcTag.classList.remove('hidden');
+      } else {
+        ageNcTag.classList.add('hidden');
+      }
+
+      if (isAgeLocked) {
+        ageLockNotice.classList.remove('hidden');
+      } else {
+        ageLockNotice.classList.add('hidden');
+      }
+
+      const btnVal = document.getElementById('btn-validate');
+      const btnRef = document.getElementById('btn-refuse');
+      const panelVal = document.getElementById('panel-validated');
+      const panelRef = document.getElementById('panel-refused');
+      const statusPill = document.getElementById('header-status-pill');
+
+      if (state.decision === 'VALIDÉ' && !isAgeLocked) {
+        btnVal.className = 'py-4 px-4 rounded-2xl border-2 border-emerald-600 bg-emerald-600 text-white font-extrabold text-base transition active:scale-[0.98] flex items-center justify-center gap-2.5 shadow-md ring-2 ring-emerald-500 ring-offset-2';
+        btnRef.className = 'py-4 px-4 rounded-2xl border-2 border-slate-200 bg-slate-50 text-slate-500 hover:bg-red-50 hover:text-red-700 hover:border-red-200 font-extrabold text-base transition active:scale-[0.98] flex items-center justify-center gap-2.5';
+        panelVal.classList.remove('hidden');
+        panelRef.classList.add('hidden');
+        statusPill.textContent = 'VALIDÉ';
+        statusPill.className = 'px-3 py-1.5 rounded-xl text-xs font-extrabold uppercase tracking-wider bg-emerald-600 text-white shadow-sm';
+      } else if (state.decision === 'REFUSÉ') {
+        btnVal.className = isAgeLocked
+          ? 'py-4 px-4 rounded-2xl border-2 border-slate-200 bg-slate-100 text-slate-400 opacity-60 cursor-not-allowed font-extrabold text-base flex items-center justify-center gap-2.5'
+          : 'py-4 px-4 rounded-2xl border-2 border-slate-200 bg-slate-50 text-slate-500 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-200 font-extrabold text-base transition active:scale-[0.98] flex items-center justify-center gap-2.5';
+        btnRef.className = 'py-4 px-4 rounded-2xl border-2 border-red-600 bg-red-600 text-white font-extrabold text-base transition active:scale-[0.98] flex items-center justify-center gap-2.5 shadow-md ring-2 ring-red-500 ring-offset-2';
+        panelVal.classList.add('hidden');
+        panelRef.classList.remove('hidden');
+        statusPill.textContent = isAgeLocked ? 'REFUSÉ (ÂGE)' : 'REFUSÉ';
+        statusPill.className = 'px-3 py-1.5 rounded-xl text-xs font-extrabold uppercase tracking-wider bg-red-600 text-white shadow-sm';
+      } else {
+        btnVal.className = 'py-4 px-4 rounded-2xl border-2 border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-extrabold text-base transition active:scale-[0.98] flex items-center justify-center gap-2.5 shadow-sm';
+        btnRef.className = 'py-4 px-4 rounded-2xl border-2 border-red-300 bg-red-50 hover:bg-red-100 text-red-800 font-extrabold text-base transition active:scale-[0.98] flex items-center justify-center gap-2.5 shadow-sm';
+        panelVal.classList.add('hidden');
+        panelRef.classList.add('hidden');
+        statusPill.textContent = 'En cours';
+        statusPill.className = 'px-3 py-1.5 rounded-xl text-xs font-extrabold uppercase tracking-wider bg-slate-800 text-slate-300 border border-slate-700';
+      }
+    }
+
+    function formatDisplayDate(isoDate) {
+      if (!isoDate) return new Date().toLocaleDateString('fr-FR');
+      const parts = isoDate.split('-');
+      if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
+      return isoDate;
+    }
+
+    function sanitizeFilenamePart(str, fallback) {
+      const cleaned = (str || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-zA-Z0-9_-]+/g, '_')
+        .replace(/^_+|_+$/g, '');
+      return cleaned || fallback;
+    }
+
+    /**
+     * GÉNÉRATION ET TÉLÉCHARGEMENT DU RAPPORT PDF CONSOLIDÉ (TOTALITÉ DES EXTINCTEURS DU CLIENT)
+     */
+    function generatePDFReport() {
+      try {
+        if (!window.jspdf || !window.jspdf.jsPDF) {
+          showToast('Module PDF non chargé, vérifiez votre connexion', true);
+          return;
+        }
+
+        if (isCurrentFormStarted()) {
+          saveCurrentExtinguisherToList();
+          renderSavedExtinguishersList();
+        }
+
+        const allExtinguishers = getAllExtinguishersForClient();
+
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF({
+          orientation: 'portrait',
+          unit: 'mm',
+          format: 'a4'
+        });
+
+        const pageWidth = doc.internal.pageSize.getWidth();
+        const pageHeight = doc.internal.pageSize.getHeight();
+        const margin = 14;
+        const contentWidth = pageWidth - margin * 2;
+        let y = 14;
+
+        function ensureSpace(requiredHeight) {
+          if (y + requiredHeight > pageHeight - 16) {
+            doc.addPage();
+            y = 14;
+          }
+        }
+
+        const techLabels = {
+          auxiliaire: 'Pression auxiliaire (Cartouche sparklet)',
+          permanente: 'Pression permanente (Avec manomètre)',
+          co2: 'CO2 (Dioxyde de carbone)'
+        };
+
+        const formattedDate = formatDisplayDate(state.controlDate);
+        const inspectorDisplay = (state.inspectorName || '').trim() || 'Non renseigné';
+        const totalCount = allExtinguishers.length;
+        const validCount = allExtinguishers.filter(e => e.decision === 'VALIDÉ').length;
+        const refusedCount = allExtinguishers.filter(e => e.decision === 'REFUSÉ').length;
+        const pendingCount = totalCount - validCount - refusedCount;
+
+        // 1. BANDEAU D'EN-TÊTE PROFESSIONNEL GLOBAL
+        doc.setFillColor(15, 23, 42);
+        doc.roundedRect(margin, y, contentWidth, 24, 3, 3, 'F');
+
+        doc.setTextColor(255, 255, 255);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(13);
+        doc.text('RAPPORT DE VÉRIFICATION EXTINCTEURS', margin + 5, y + 9);
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(9);
+        doc.setTextColor(148, 163, 184);
+        doc.text(`Norme NF S 61-919  •  Date : ${formattedDate}  •  Vérificateur : ${inspectorDisplay}`, margin + 5, y + 16);
+
+        let globalBadgeColor = [30, 58, 138];
+        let globalBadgeText = `${totalCount} APPAREIL${totalCount > 1 ? 'S' : ''}`;
+        if (refusedCount > 0 && validCount === 0 && pendingCount === 0) {
+          globalBadgeColor = [220, 38, 38];
+          globalBadgeText = `${refusedCount} REFUSÉ${refusedCount > 1 ? 'S' : ''}`;
+        } else if (validCount === totalCount && totalCount > 0) {
+          globalBadgeColor = [22, 163, 74];
+          globalBadgeText = '100% CONFORME';
+        }
+
+        const badgeWidth = 40;
+        const badgeX = margin + contentWidth - badgeWidth - 5;
+        doc.setFillColor(...globalBadgeColor);
+        doc.roundedRect(badgeX, y + 5, badgeWidth, 14, 2.5, 2.5, 'F');
+        doc.setTextColor(255, 255, 255);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(9.5);
+        doc.text(globalBadgeText, badgeX + badgeWidth / 2, y + 13.5, { align: 'center' });
+
+        y += 29;
+
+        // 2. BLOC CLIENT, SITE & VÉRIFICATEUR
+        ensureSpace(34);
+        doc.setFillColor(248, 250, 252);
+        doc.setDrawColor(203, 213, 225);
+        doc.roundedRect(margin, y, contentWidth, 30.5, 2.5, 2.5, 'FD');
+
+        doc.setTextColor(30, 58, 138);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(9.5);
+        doc.text('CLIENT, SITE & INTERVENTION', margin + 4, y + 6);
+
+        doc.setTextColor(15, 23, 42);
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Client / Établissement :', margin + 4, y + 12);
+        doc.setFont('helvetica', 'normal');
+        doc.text(state.clientName.trim() || 'Non renseigné', margin + 44, y + 12);
+
+        doc.setFont('helvetica', 'bold');
+        doc.text('Site / Bâtiment :', margin + 4, y + 17.5);
+        doc.setFont('helvetica', 'normal');
+        doc.text(state.siteName.trim() || 'Identique', margin + 44, y + 17.5);
+
+        doc.setFont('helvetica', 'bold');
+        doc.text('Adresse du site :', margin + 4, y + 23);
+        doc.setFont('helvetica', 'normal');
+        const addrLines = doc.splitTextToSize(state.siteAddress.trim() || 'Non renseignée', contentWidth - 48);
+        doc.text(addrLines[0], margin + 44, y + 23);
+
+        doc.setFont('helvetica', 'bold');
+        doc.text('Vérificateur :', margin + 4, y + 28.5);
+        doc.setFont('helvetica', 'normal');
+        doc.text(`${inspectorDisplay}   •   Date d'intervention : ${formattedDate}`, margin + 44, y + 28.5);
+
+        y += 34.5;
+
+        // 3. TABLEAU RÉCAPITULATIF DE SYNTHÈSE DU PARC CLIENT
+        ensureSpace(22 + totalCount * 7);
+        doc.setFillColor(30, 58, 138);
+        doc.roundedRect(margin, y, contentWidth, 7.5, 1.5, 1.5, 'F');
+        doc.setTextColor(255, 255, 255);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(9);
+        doc.text(`SYNTHÈSE GLOBALE DU PARC VÉRIFIÉ (${validCount} Validé${validCount > 1 ? 's' : ''} • ${refusedCount} Refusé${refusedCount > 1 ? 's' : ''}${pendingCount > 0 ? ` • ${pendingCount} En cours` : ''})`, margin + 3.5, y + 5.2);
+        y += 8.5;
+
+        doc.setFillColor(226, 232, 240);
+        doc.rect(margin, y, contentWidth, 6.5, 'F');
+        doc.setTextColor(30, 41, 59);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(7.8);
+        doc.text('N° / Repère', margin + 2.5, y + 4.4);
+        doc.text('Zone / Emplacement', margin + 30, y + 4.4);
+        doc.text('Agent / Capacité', margin + 82, y + 4.4);
+        doc.text('Fab.', margin + 128, y + 4.4);
+        doc.text('Verdict', margin + contentWidth - 24, y + 4.4);
+        y += 7;
+
+        allExtinguishers.forEach((ext, idx) => {
+          ensureSpace(7.5);
+          if (idx % 2 === 1) {
+            doc.setFillColor(248, 250, 252);
+          } else {
+            doc.setFillColor(255, 255, 255);
+          }
+          doc.setDrawColor(226, 232, 240);
+          doc.rect(margin, y, contentWidth, 6.5, 'FD');
+
+          doc.setTextColor(15, 23, 42);
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(8);
+          doc.text((ext.extNum || `#${idx + 1}`).substring(0, 14), margin + 2.5, y + 4.4);
+
+          doc.setFont('helvetica', 'normal');
+          doc.text((ext.extZone || 'Non renseignée').substring(0, 27), margin + 30, y + 4.4);
+          doc.text((ext.extAgent || '').substring(0, 24), margin + 82, y + 4.4);
+          doc.text(ext.extYear || '-', margin + 128, y + 4.4);
+
+          let stBg = [100, 116, 139];
+          let stLabel = 'EN COURS';
+          if (ext.decision === 'VALIDÉ') {
+            stBg = [22, 163, 74];
+            stLabel = 'VALIDÉ';
+          } else if (ext.decision === 'REFUSÉ') {
+            stBg = [220, 38, 38];
+            stLabel = 'REFUSÉ';
+          }
+
+          doc.setFillColor(...stBg);
+          doc.roundedRect(margin + contentWidth - 26, y + 1, 24, 4.5, 1, 1, 'F');
+          doc.setTextColor(255, 255, 255);
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(7);
+          doc.text(stLabel, margin + contentWidth - 14, y + 4.1, { align: 'center' });
+
+          y += 6.5;
+        });
+
+        y += 6;
+
+        // 4. FICHES DÉTAILLÉES DE CHAQUE EXTINCTEUR DU CLIENT
+        allExtinguishers.forEach((ext, index) => {
+          if (index > 0) {
+            ensureSpace(75);
+          } else {
+            ensureSpace(50);
+          }
+
+          const ageInfo = evaluateAgeForData(ext.extYear, ext.tech);
+          let yearDisplay = ext.extYear || 'Non renseignée';
+          let isReform = false;
+          if (ageInfo.valid) {
+            isReform = ageInfo.isOver20;
+            yearDisplay = `${ageInfo.yearNum} (${ageInfo.age} an${ageInfo.age > 1 ? 's' : ''}${isReform ? ' — RÉFORME >= 20 ANS' : ''})`;
+          }
+
+          doc.setFillColor(15, 23, 42);
+          doc.roundedRect(margin, y, contentWidth, 9, 2, 2, 'F');
+          doc.setTextColor(255, 255, 255);
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(10);
+          doc.text(`APPAREIL ${index + 1} / ${totalCount}  —  ${ext.extNum || 'Sans repère'}`, margin + 4, y + 6);
+
+          let appBadgeBg = [71, 85, 105];
+          let appBadgeTxt = 'EN COURS';
+          if (ext.decision === 'VALIDÉ') {
+            appBadgeBg = [22, 163, 74];
+            appBadgeTxt = 'VALIDÉ';
+          } else if (ext.decision === 'REFUSÉ') {
+            appBadgeBg = [220, 38, 38];
+            appBadgeTxt = 'REFUSÉ';
+          }
+          doc.setFillColor(...appBadgeBg);
+          doc.roundedRect(margin + contentWidth - 32, y + 1.5, 29, 6, 1.5, 1.5, 'F');
+          doc.setFontSize(8.2);
+          doc.text(appBadgeTxt, margin + contentWidth - 17.5, y + 5.6, { align: 'center' });
+
+          y += 11;
+
+          ensureSpace(24);
+          doc.setFillColor(248, 250, 252);
+          doc.setDrawColor(203, 213, 225);
+          doc.roundedRect(margin, y, contentWidth, 21, 2, 2, 'FD');
+
+          const col1LabelX = margin + 4;
+          const col1ValX = margin + 35;
+          const col2LabelX = margin + contentWidth / 2 + 2;
+          const col2ValX = margin + contentWidth / 2 + 37;
+
+          doc.setTextColor(15, 23, 42);
+          doc.setFontSize(8.5);
+
+          doc.setFont('helvetica', 'bold');
+          doc.text('N° / Repère :', col1LabelX, y + 5.5);
+          doc.text(ext.extNum || 'Non renseigné', col1ValX, y + 5.5);
+
+          doc.text('Zone / Emplac. :', col2LabelX, y + 5.5);
+          doc.setFont('helvetica', 'normal');
+          doc.text((ext.extZone || 'Non renseignée').substring(0, 32), col2ValX, y + 5.5);
+
+          doc.setFont('helvetica', 'bold');
+          doc.text('Marque :', col1LabelX, y + 11.5);
+          doc.setFont('helvetica', 'normal');
+          doc.text(ext.extBrand || 'Non renseignée', col1ValX, y + 11.5);
+
+          doc.setFont('helvetica', 'bold');
+          doc.text('Agent / Capacité :', col2LabelX, y + 11.5);
+          doc.setFont('helvetica', 'normal');
+          doc.text(ext.extAgent || '', col2ValX, y + 11.5);
+
+          doc.setFont('helvetica', 'bold');
+          doc.text('Technologie :', col1LabelX, y + 17.5);
+          doc.setFont('helvetica', 'normal');
+          doc.text((techLabels[ext.tech] || '').split(' (')[0], col1ValX, y + 17.5);
+
+          doc.setFont('helvetica', 'bold');
+          doc.text('Année fab. :', col2LabelX, y + 17.5);
+          if (isReform) doc.setTextColor(220, 38, 38);
+          doc.setFont('helvetica', isReform ? 'bold' : 'normal');
+          doc.text(yearDisplay, col2ValX, y + 17.5);
+          doc.setTextColor(15, 23, 42);
+
+          y += 24;
+
+          const sections = getActiveSectionsForTech(ext.tech);
+          sections.forEach(sec => {
+            ensureSpace(13);
+            doc.setFillColor(30, 58, 138);
+            doc.roundedRect(margin, y, contentWidth, 6.8, 1.2, 1.2, 'F');
+            doc.setTextColor(255, 255, 255);
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(8.3);
+            doc.text(`SECTION ${sec.code} — ${sec.title.toUpperCase()}`, margin + 3, y + 4.7);
+            y += 8;
+
+            sec.items.forEach(item => {
+              const status = ext.checks[item.id] || 'NON CONTRÔLÉ';
+              const labelLines = doc.splitTextToSize(item.label, contentWidth - 36);
+              const rowHeight = Math.max(6.8, labelLines.length * 4.2 + 2.5);
+
+              ensureSpace(rowHeight + 1);
+
+              if (status === 'KO') {
+                doc.setFillColor(254, 242, 242);
+                doc.setDrawColor(252, 165, 165);
+              } else if (status === 'OK') {
+                doc.setFillColor(240, 253, 244);
+                doc.setDrawColor(203, 213, 225);
+              } else {
+                doc.setFillColor(255, 255, 255);
+                doc.setDrawColor(226, 232, 240);
+              }
+
+              doc.roundedRect(margin, y, contentWidth, rowHeight, 1, 1, 'FD');
+
+              doc.setTextColor(30, 41, 59);
+              doc.setFont('helvetica', status === 'KO' ? 'bold' : 'normal');
+              doc.setFontSize(8.2);
+              doc.text(labelLines, margin + 3, y + 4.5);
+
+              const pillW = 24;
+              const pillH = 4.8;
+              const pillX = margin + contentWidth - pillW - 2.5;
+              const pillY = y + (rowHeight - pillH) / 2;
+
+              let stBg = [226, 232, 240];
+              let stTxt = [71, 85, 105];
+              let stLabel = 'N.C.';
+
+              if (status === 'OK') {
+                stBg = [22, 163, 74];
+                stTxt = [255, 255, 255];
+                stLabel = 'OK';
+              } else if (status === 'KO') {
+                stBg = [220, 38, 38];
+                stTxt = [255, 255, 255];
+                stLabel = 'KO';
+              } else if (status === 'NA') {
+                stBg = [100, 116, 139];
+                stTxt = [255, 255, 255];
+                stLabel = 'N.A.';
+              }
+
+              doc.setFillColor(...stBg);
+              doc.roundedRect(pillX, pillY, pillW, pillH, 1.2, 1.2, 'F');
+              doc.setTextColor(...stTxt);
+              doc.setFont('helvetica', 'bold');
+              doc.setFontSize(7.5);
+              doc.text(stLabel, pillX + pillW / 2, pillY + 3.4, { align: 'center' });
+
+              y += rowHeight + 1;
+            });
+
+            y += 2;
+          });
+
+          if (ext.decision === 'REFUSÉ') {
+            const reasons = ext.refusalReasons.length > 0 ? ext.refusalReasons : ['Motif non précisé'];
+            const boxHeight = 16 + reasons.length * 4.8;
+            ensureSpace(boxHeight + 3);
+
+            doc.setFillColor(254, 242, 242);
+            doc.setDrawColor(220, 38, 38);
+            doc.roundedRect(margin, y, contentWidth, boxHeight, 2, 2, 'FD');
+
+            doc.setTextColor(153, 27, 27);
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(9);
+            doc.text(`DÉCISION (${ext.extNum}) : APPAREIL REFUSÉ — MOTIFS DE NON-CONFORMITÉ`, margin + 4, y + 6);
+
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(8.4);
+            doc.setTextColor(127, 29, 29);
+            let ry = y + 11;
+            reasons.forEach(r => {
+              doc.text(`• ${r}`, margin + 6, ry);
+              ry += 4.6;
+            });
+
+            doc.setFont('helvetica', 'bold');
+            doc.text(
+              `Extincteur de remplacement / prêt installé : ${ext.replacementPlaced ? 'OUI' : 'NON'}`,
+              margin + 4,
+              ry + 1
+            );
+
+            y += boxHeight + 3;
+          } else if (ext.decision === 'VALIDÉ') {
+            ensureSpace(15);
+            doc.setFillColor(236, 253, 245);
+            doc.setDrawColor(22, 163, 74);
+            doc.roundedRect(margin, y, contentWidth, 12.5, 2, 2, 'FD');
+
+            doc.setTextColor(6, 95, 70);
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(9);
+            doc.text(`DÉCISION (${ext.extNum}) : CONFORME — APPAREIL VALIDÉ (NF S 61-919)`, margin + 4, y + 5.5);
+
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(8.2);
+            doc.text('Étiquette de vérification annuelle datée apposée et appareil remis sur son support.', margin + 4, y + 10.2);
+
+            y += 15.5;
+          }
+
+          if (ext.additiveNonFluorStatus) {
+            ensureSpace(12);
+            const isFluorKo = ext.additiveNonFluorStatus === 'non_conforme';
+            const addLabel = ext.additiveNonFluorStatus === 'checked_ok'
+              ? 'CONTRÔLE ADDITIF (> 5 ANS) : Vérifié conforme — Additif non fluoré'
+              : ext.additiveNonFluorStatus === 'replaced'
+              ? 'CONTRÔLE ADDITIF (> 5 ANS) : Charge modifiée — Remplacé par un additif non fluoré'
+              : 'CONTRÔLE ADDITIF (> 5 ANS) : NON CONFORME — Additif fluoré à remplacer';
+
+            doc.setFillColor(...(isFluorKo ? [254, 242, 242] : [239, 246, 255]));
+            doc.setDrawColor(...(isFluorKo ? [220, 38, 38] : [59, 130, 246]));
+            doc.roundedRect(margin, y, contentWidth, 8.5, 1.5, 1.5, 'FD');
+            doc.setTextColor(...(isFluorKo ? [153, 27, 27] : [30, 58, 138]));
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(8.2);
+            doc.text(addLabel, margin + 4, y + 5.5);
+            y += 11;
+          }
+
+          if (ext.notes && ext.notes.trim()) {
+            const obsLines = doc.splitTextToSize(ext.notes.trim(), contentWidth - 8);
+            const obsHeight = 10 + obsLines.length * 4.4;
+            ensureSpace(obsHeight + 3);
+
+            doc.setFillColor(248, 250, 252);
+            doc.setDrawColor(203, 213, 225);
+            doc.roundedRect(margin, y, contentWidth, obsHeight, 2, 2, 'FD');
+
+            doc.setTextColor(30, 58, 138);
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(8.5);
+            doc.text(`OBSERVATIONS (${ext.extNum})`, margin + 4, y + 5.5);
+
+            doc.setTextColor(30, 41, 59);
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(8.4);
+            doc.text(obsLines, margin + 4, y + 10.5);
+
+            y += obsHeight + 4;
+          }
+
+          if (index < totalCount - 1) {
+            y += 4;
+            ensureSpace(6);
+            doc.setDrawColor(148, 163, 184);
+            doc.setLineDashPattern([2, 2], 0);
+            doc.line(margin, y, pageWidth - margin, y);
+            doc.setLineDashPattern([], 0);
+            y += 6;
+          }
+        });
+
+        // BLOC VISA & SIGNATURE DU VÉRIFICATEUR EN FIN DE RAPPORT
+        ensureSpace(26);
+        doc.setFillColor(248, 250, 252);
+        doc.setDrawColor(203, 213, 225);
+        doc.roundedRect(margin, y, contentWidth, 22, 2, 2, 'FD');
+
+        doc.setTextColor(30, 58, 138);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(8.5);
+        doc.text('VISA DU VÉRIFICATEUR (TRAÇABILITÉ NF S 61-919)', margin + 4, y + 5.5);
+
+        doc.setTextColor(15, 23, 42);
+        doc.setFontSize(8.5);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Nom du vérificateur :', margin + 4, y + 11.5);
+        doc.setFont('helvetica', 'normal');
+        doc.text(inspectorDisplay, margin + 40, y + 11.5);
+
+        doc.setFont('helvetica', 'bold');
+        doc.text('Date :', margin + 4, y + 17.5);
+        doc.setFont('helvetica', 'normal');
+        doc.text(formattedDate, margin + 40, y + 17.5);
+
+        doc.setFont('helvetica', 'bold');
+        doc.text('Signature / Poinçon :', margin + contentWidth / 2 + 4, y + 11.5);
+        doc.setDrawColor(148, 163, 184);
+        doc.line(margin + contentWidth / 2 + 40, y + 18, margin + contentWidth - 6, y + 18);
+
+        y += 26;
+
+        // PIED DE PAGE SUR TOUTES LES PAGES
+        const totalPages = doc.internal.getNumberOfPages();
+        for (let i = 1; i <= totalPages; i++) {
+          doc.setPage(i);
+          doc.setDrawColor(226, 232, 240);
+          doc.line(margin, pageHeight - 12, pageWidth - margin, pageHeight - 12);
+          doc.setFont('helvetica', 'normal');
+          doc.setFontSize(7.5);
+          doc.setTextColor(100, 116, 139);
+          doc.text(
+            `Vérificateur : ${inspectorDisplay} — Rapport (${totalCount} appareil${totalCount > 1 ? 's' : ''}) — NF S 61-919`,
+            margin,
+            pageHeight - 7.5
+          );
+          doc.text(`Page ${i} / ${totalPages}`, pageWidth - margin, pageHeight - 7.5, { align: 'right' });
+        }
+
+        const safeClient = sanitizeFilenamePart(state.clientName, 'Client');
+        const safeDate = sanitizeFilenamePart(state.controlDate || getTodayISO(), getTodayISO());
+        const fileName = `Rapport_Parc_Extincteurs_${safeClient}_${totalCount}app_${safeDate}.pdf`;
+
+        doc.save(fileName);
+        showToast(`Rapport PDF téléchargé (${totalCount} appareil${totalCount > 1 ? 's' : ''}) !`);
+      } catch (err) {
+        console.error('Erreur génération PDF :', err);
+        showToast('Erreur lors de la génération du PDF', true);
+      }
+    }
+
+    /**
+     * ENREGISTRER L'EXTINCTEUR EN COURS & PASSER AU SUIVANT (MÊME CLIENT)
+     */
+    function resetForNextExtinguisherSameClient() {
+      const savedItem = saveCurrentExtinguisherToList();
+      const nextIndex = state.savedExtinguishers.length + 1;
+
+      state = {
+        ...state,
+        currentId: null,
+        extNum: '',
+        extZone: '',
+        extBrand: '',
+        extAgent: state.extAgent,
+        tech: state.tech,
+        extYear: '',
+        autoAgeRefused: false,
+        ageRevisionChecked: false,
+        additiveNonFluorStatus: null,
+        checks: {},
+        decision: null,
+        refusalReasons: [],
+        replacementPlaced: false,
+        notes: ''
+      };
+      saveState();
+      syncInputsFromState();
+      renderRegulatoryAlerts();
+      renderTechSelector();
+      renderChecklist();
+      renderRefusalReasons();
+      renderSavedExtinguishersList();
+      updateHeaderAndDecisionUI();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      showToast(`${savedItem.extNum} enregistré (${state.savedExtinguishers.length} au total) — Saisissez l'appareil #${nextIndex}`);
+    }
+
+    /**
+     * RÉINITIALISER COMPLÈTEMENT POUR UN NOUVEAU CLIENT
+     */
+    function resetForNewClient() {
+      const preservedInspector = state.inspectorName;
+      state = {
+        clientName: '',
+        siteName: '',
+        siteAddress: '',
+        inspectorName: preservedInspector,
+        controlDate: getTodayISO(),
+        clientLocked: false,
+        savedExtinguishers: [],
+        currentId: null,
+        extNum: '',
+        extZone: '',
+        extBrand: '',
+        extAgent: 'Eau + Additif 6L / 9L',
+        tech: 'auxiliaire',
+        extYear: '',
+        autoAgeRefused: false,
+        ageRevisionChecked: false,
+        additiveNonFluorStatus: null,
+        checks: {},
+        decision: null,
+        refusalReasons: [],
+        replacementPlaced: false,
+        notes: ''
+      };
+      saveState();
+      syncInputsFromState();
+      renderClientLockState();
+      renderRegulatoryAlerts();
+      renderTechSelector();
+      renderChecklist();
+      renderRefusalReasons();
+      renderSavedExtinguishersList();
+      updateHeaderAndDecisionUI();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      showToast('Nouveau client initialisé');
+    }
+
+    /**
+     * SYNCHRONISATION DES CHAMPS DU FORMULAIRE
+     */
+    function syncInputsFromState() {
+      document.getElementById('client-name').value = state.clientName;
+      document.getElementById('site-name').value = state.siteName;
+      document.getElementById('site-address').value = state.siteAddress;
+      document.getElementById('inspector-name').value = state.inspectorName;
+      document.getElementById('control-date').value = state.controlDate;
+
+      document.getElementById('ext-num').value = state.extNum;
+      document.getElementById('ext-zone').value = state.extZone;
+      document.getElementById('ext-brand').value = state.extBrand;
+      document.getElementById('ext-agent').value = state.extAgent;
+      document.getElementById('ext-year').value = state.extYear;
+      document.getElementById('replacement-placed').checked = state.replacementPlaced;
+      document.getElementById('general-notes').value = state.notes;
+    }
+
+    /**
+     * INITIALISATION DE L'APPLICATION
+     */
+    function init() {
+      setupMobileAppCapabilities();
+      loadState();
+      applyAutomaticAgeCompliance();
+      syncInputsFromState();
+      renderClientLockState();
+      renderRegulatoryAlerts();
+      renderTechSelector();
+      renderChecklist();
+      renderRefusalReasons();
+      renderSavedExtinguishersList();
+      updateHeaderAndDecisionUI();
+
+      // Modale Installation Smartphone
+      const installModal = document.getElementById('install-modal');
+      document.getElementById('open-install-btn').addEventListener('click', () => {
+        installModal.classList.remove('hidden');
+        installModal.classList.add('flex');
+      });
+      document.getElementById('close-install-modal-btn').addEventListener('click', () => {
+        installModal.classList.add('hidden');
+        installModal.classList.remove('flex');
+      });
+      document.getElementById('native-install-trigger-btn').addEventListener('click', async () => {
+        if (!deferredInstallPrompt) return;
+        deferredInstallPrompt.prompt();
+        const { outcome } = await deferredInstallPrompt.userChoice;
+        if (outcome === 'accepted') {
+          installModal.classList.add('hidden');
+          installModal.classList.remove('flex');
+        }
+        deferredInstallPrompt = null;
+      });
+
+      // Champs Client & Site
+      document.getElementById('client-name').addEventListener('input', e => {
+        state.clientName = e.target.value;
+        saveState();
+        updateHeaderAndDecisionUI();
+      });
+      document.getElementById('site-name').addEventListener('input', e => {
+        state.siteName = e.target.value;
+        saveState();
+      });
+      document.getElementById('site-address').addEventListener('input', e => {
+        state.siteAddress = e.target.value;
+        saveState();
+      });
+      document.getElementById('inspector-name').addEventListener('input', e => {
+        state.inspectorName = e.target.value;
+        saveState();
+      });
+      document.getElementById('control-date').addEventListener('change', e => {
+        state.controlDate = e.target.value;
+        saveState();
+      });
+
+      // Verrouillage Client & Site
+      document.getElementById('toggle-client-lock-btn').addEventListener('click', () => {
+        state.clientLocked = !state.clientLocked;
+        saveState();
+        renderClientLockState();
+        showToast(state.clientLocked ? 'Infos Client & Site verrouillées' : 'Infos Client & Site modifiables');
+      });
+
+      // Champs Identification Extincteur
+      document.getElementById('ext-num').addEventListener('input', e => {
+        state.extNum = e.target.value;
+        saveState();
+        renderSavedExtinguishersList();
+        updateHeaderAndDecisionUI();
+      });
+      document.getElementById('ext-zone').addEventListener('input', e => {
+        state.extZone = e.target.value;
+        saveState();
+        renderSavedExtinguishersList();
+        updateHeaderAndDecisionUI();
+      });
+      document.getElementById('ext-brand').addEventListener('input', e => {
+        state.extBrand = e.target.value;
+        saveState();
+      });
+      document.getElementById('ext-agent').addEventListener('change', e => {
+        state.extAgent = e.target.value;
+        if (state.extAgent.startsWith('CO2') && state.tech !== 'co2') {
+          state.tech = 'co2';
+          renderTechSelector();
+          renderChecklist();
+        }
+        renderRegulatoryAlerts();
+        renderSavedExtinguishersList();
+        updateHeaderAndDecisionUI();
+        saveState();
+      });
+
+      // Année de fabrication
+      document.getElementById('ext-year').addEventListener('input', e => {
+        state.extYear = e.target.value;
+        state.ageRevisionChecked = false;
+        state.additiveNonFluorStatus = null;
+        const wasAutoRefused = state.autoAgeRefused;
+
+        applyAutomaticAgeCompliance();
+        saveState();
+        renderRegulatoryAlerts();
+        renderRefusalReasons();
+        renderSavedExtinguishersList();
+        updateHeaderAndDecisionUI();
+
+        const info = evaluateExtinguisherAge();
+        if (info.valid && info.isOver20 && !wasAutoRefused) {
+          showToast(`NON CONFORME (${info.age} ans >= 20 ans) : Réforme obligatoire`, true);
+        }
+      });
+
+      // Sélecteur technologie
+      document.querySelectorAll('.tech-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          state.tech = btn.dataset.tech;
+          saveState();
+          renderTechSelector();
+          renderChecklist();
+          renderRegulatoryAlerts();
+          renderSavedExtinguishersList();
+          updateHeaderAndDecisionUI();
+        });
+      });
+
+      // Tout mettre OK
+      document.getElementById('mark-all-ok-btn').addEventListener('click', markAllPointsOk);
+
+      // Boutons VALIDER / REFUSER
+      document.getElementById('btn-validate').addEventListener('click', () => {
+        const info = evaluateExtinguisherAge();
+        if (info.valid && info.isOver20) {
+          showToast(`Validation impossible : appareil de ${info.age} ans (>= 20 ans)`, true);
+          return;
+        }
+        state.decision = 'VALIDÉ';
+        saveState();
+        renderSavedExtinguishersList();
+        updateHeaderAndDecisionUI();
+        showToast('Extincteur VALIDÉ');
+      });
+
+      document.getElementById('btn-refuse').addEventListener('click', () => {
+        state.decision = 'REFUSÉ';
+        saveState();
+        renderSavedExtinguishersList();
+        updateHeaderAndDecisionUI();
+        showToast('Extincteur REFUSÉ — Sélectionnez les motifs', true);
+      });
+
+      // Prêt installé & observations
+      document.getElementById('replacement-placed').addEventListener('change', e => {
+        state.replacementPlaced = e.target.checked;
+        saveState();
+      });
+
+      document.getElementById('general-notes').addEventListener('input', e => {
+        state.notes = e.target.value;
+        saveState();
+      });
+
+      // Télécharger le rapport en PDF
+      document.getElementById('download-pdf-btn').addEventListener('click', generatePDFReport);
+
+      // Modale Enregistrer & Extincteur suivant (même client)
+      const modal = document.getElementById('reset-modal');
+      document.getElementById('open-reset-modal-btn').addEventListener('click', () => {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+      });
+      document.getElementById('cancel-reset-btn').addEventListener('click', () => {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+      });
+      document.getElementById('confirm-reset-btn').addEventListener('click', () => {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+        resetForNextExtinguisherSameClient();
+      });
+
+      // Modale Nouveau Client
+      const newClientModal = document.getElementById('new-client-modal');
+      document.getElementById('open-new-client-modal-btn').addEventListener('click', () => {
+        newClientModal.classList.remove('hidden');
+        newClientModal.classList.add('flex');
+      });
+      document.getElementById('cancel-new-client-btn').addEventListener('click', () => {
+        newClientModal.classList.add('hidden');
+        newClientModal.classList.remove('flex');
+      });
+      document.getElementById('confirm-new-client-btn').addEventListener('click', () => {
+        newClientModal.classList.add('hidden');
+        newClientModal.classList.remove('flex');
+        resetForNewClient();
+      });
+    }
+
+    document.addEventListener('DOMContentLoaded', init);
+  </script>
+</body>
+</html>
